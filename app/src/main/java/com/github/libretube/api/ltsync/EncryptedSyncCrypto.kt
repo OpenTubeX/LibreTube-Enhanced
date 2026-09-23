@@ -147,7 +147,10 @@ internal class EncryptedSyncCrypto private constructor(
             return value
         }
 
-        fun fromStoredKey(key: String, salt: String) = EncryptedSyncCrypto(key, salt)
+        fun fromStoredKey(key: String, salt: String): EncryptedSyncCrypto {
+            require(key.isNotEmpty()) { "Sign in again with a privacy passphrase to enable encrypted sync" }
+            return EncryptedSyncCrypto(key, salt)
+        }
 
         fun fromPassphrase(passphrase: String, remotePayload: String?): EncryptedSyncCrypto {
             val salt = remotePayload?.let { parseEnvelope(it).kdf.salt }

@@ -48,7 +48,7 @@
 
         <EditTextPreference
             app:icon="@drawable/ic_server"
-            app:defaultValue="https://sync.opentubex.org"
+            app:defaultValue="https://sync.opentubex.org/"
             app:key="libretube_sync_server_url"
             app:title="@string/sync_server_url_label"
             app:useSimpleSummaryProvider="true"/>

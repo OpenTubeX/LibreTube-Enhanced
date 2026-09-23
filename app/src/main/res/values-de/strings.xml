@@ -552,8 +552,9 @@
     <string name="choose_instance">Bitte wählen Sie zunächst eine Instanz aus!</string>
     <string name="choose_instance_long">Bitte wählen Sie unten eine Piped-Instanz aus, die Sie verwenden möchten. Die Piped-Instanz fungiert als Vermittler zwischen Ihnen und YouTube. Diese Instanzen befinden sich an verschiedenen physischen Standorten – erkennbar an den jeweiligen Landesflaggen. Instanzen, die physisch näher bei Ihnen liegen, sind wahrscheinlich schneller als solche, die weiter entfernt sind. Sie können die verwendete Instanz jederzeit in den Einstellungen ändern.</string>
     <string name="sync_type_summary_none">Speichern Sie alle Benutzerdaten offline in der App. Das bedeutet, dass Sie keine Daten zwischen Ihren Geräten synchronisieren können. Dies könnte jedoch die richtige Wahl sein, wenn Sie nur ein einziges Gerät verwenden oder keine Wert auf die Synchronisierung zwischen Geräten legen.</string>
-    <string name="sync_type_summary_sync_server">Synchronisiere Abos, Wiedergabelisten und Verlauf über %1$s. Server mit verschlüsselter Synchronisierung erfordern eine separate Datenschutz-Passphrase; deine Daten werden vor dem Hochladen verschlüsselt.</string>
+    <string name="sync_type_summary_sync_server">Synchronisieren Sie Abonnements, Wiedergabelisten und Verlauf über %1$s. Server mit verschlüsselter Synchronisierung erfordern eine separate Datenschutz-Passphrase; Ihre Daten werden vor dem Hochladen verschlüsselt.</string>
     <string name="sync_privacy_passphrase">Datenschutz-Passphrase (für verschlüsselte Synchronisierung)</string>
+    <string name="sync_privacy_passphrase_help">Verschlüsselte Server: mindestens 12 Zeichen, anders als Ihr Kontopasswort. Für andere Server leer lassen.</string>
     <string name="opentubex_sync_server">OpenTubeX-Synchronisierungsserver</string>
     <string name="sync_server_url_label">URL des Synchronisierungsservers</string>
     <string name="sync_server_type_label">Nutzerdaten synchronisieren über</string>

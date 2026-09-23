@@ -32,6 +32,7 @@
         android:id="@+id/privacy_passphrase_input"
         style="@style/CustomDialogTextInputLayout"
         android:hint="@string/sync_privacy_passphrase"
+        app:helperText="@string/sync_privacy_passphrase_help"
         app:passwordToggleEnabled="true">
 
         <com.google.android.material.textfield.TextInputEditText

@@ -1,5 +1,6 @@
 package com.github.libretube.repo
 
+import com.github.libretube.api.RetrofitInstance
 import com.github.libretube.constants.PreferenceKeys
 import com.github.libretube.enums.SyncServerType
 import com.github.libretube.helpers.PreferenceHelper
@@ -19,7 +20,9 @@ object UserDataRepositoryHelper {
 
     private fun userDataRepositoryFor(type: SyncServerType): UserDataRepository = when (type) {
         SyncServerType.PIPED -> PipedUserDataRepository()
-        SyncServerType.LIBRETUBE -> if (PreferenceHelper.getSyncPrivacyKey().isNotEmpty()) {
+        SyncServerType.LIBRETUBE -> if (
+            PreferenceHelper.getSyncPrivacySalt().isNotEmpty() || RetrofitInstance.isOpenTubeXSyncServer
+        ) {
             EncryptedSyncServerUserDataRepository()
         } else {
             LibreTubeSyncServerUserDataRepository()

@@ -550,6 +550,7 @@
     <string name="sync_type_summary_none">Store all user data offline within the app. That means that you can\'t synchronize data between your devices, but might be the right choice if you only use a single device or don\'t care about syncing between devices.</string>
     <string name="sync_type_summary_sync_server">Sync subscriptions, playlists, and history through %1$s. Servers with encrypted sync require a separate privacy passphrase; your data is encrypted before upload.</string>
     <string name="sync_privacy_passphrase">Privacy passphrase (for encrypted sync)</string>
+    <string name="sync_privacy_passphrase_help">Encrypted servers: at least 12 characters, different from your account password. Leave blank for other servers.</string>
     <string name="sync_type_summary_piped">Experts only, deprecated:\nStore playlists and subscriptions data on Piped (%1$s). As Piped doesn\'t have any public instances anymore, you have to be hosting your own Piped instance.</string>
     <string name="switch_sync_type_warning">If you previously used a different sync type, please take a backup of your subscriptions and playlists first. You can then switch the sync type in the instance settings and re-import your data from the backup.</string>
     <string name="already_downloaded">You already downloaded this video!</string>

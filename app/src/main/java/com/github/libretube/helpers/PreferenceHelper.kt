@@ -32,6 +32,7 @@ object PreferenceHelper {
      * For sensitive data (like token)
      */
     private lateinit var authSettings: SharedPreferences
+    @Volatile private var syncPrivacyKeyCache: String? = null
 
     /**
      * Possible chars to use for the SB User ID
@@ -185,6 +186,7 @@ object PreferenceHelper {
     fun initialize(context: Context) {
         settings = getDefaultSharedPreferences(context)
         authSettings = getAuthenticationPreferences(context)
+        syncPrivacyKeyCache = null
     }
 
     /**
@@ -267,17 +269,23 @@ object PreferenceHelper {
         if (newValue.isEmpty()) setSyncPrivacy("", "")
     }
 
-    fun getSyncPrivacyKey(): String =
-        authSettings.getString(PreferenceKeys.SYNC_PRIVACY_KEY, "").orEmpty()
+    fun getSyncPrivacyKey(): String {
+        syncPrivacyKeyCache?.let { return it }
+        val wrapped = authSettings.getString(PreferenceKeys.SYNC_PRIVACY_KEY, "").orEmpty()
+        return (if (wrapped.isEmpty()) "" else runCatching { SyncPrivacyKeyStore.unwrap(wrapped) }.getOrDefault(""))
+            .also { syncPrivacyKeyCache = it }
+    }
 
     fun getSyncPrivacySalt(): String =
         authSettings.getString(PreferenceKeys.SYNC_PRIVACY_SALT, "").orEmpty()
 
     fun setSyncPrivacy(key: String, salt: String) {
+        val wrapped = if (key.isEmpty()) "" else SyncPrivacyKeyStore.wrap(key)
         authSettings.edit {
-            putString(PreferenceKeys.SYNC_PRIVACY_KEY, key)
+            putString(PreferenceKeys.SYNC_PRIVACY_KEY, wrapped)
             putString(PreferenceKeys.SYNC_PRIVACY_SALT, salt)
         }
+        syncPrivacyKeyCache = key
     }
 
     fun getUsername(): String {

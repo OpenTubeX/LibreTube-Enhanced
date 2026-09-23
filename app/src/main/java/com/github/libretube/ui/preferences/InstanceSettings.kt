@@ -168,8 +168,11 @@ class InstanceSettings : BasePreferenceFragment() {
 
     fun toggleAuthAccountActionsUI(hasAuthSupport: Boolean) {
         val loggedIn = PreferenceHelper.getToken().isNotBlank()
+        val needsPrivacyKey = loggedIn && UserDataRepositoryHelper.syncServerType == SyncServerType.LIBRETUBE &&
+            (RetrofitInstance.isOpenTubeXSyncServer || PreferenceHelper.getSyncPrivacySalt().isNotEmpty()) &&
+            PreferenceHelper.getSyncPrivacyKey().isEmpty()
 
-        findPreference<Preference>(PreferenceKeys.LOGIN_REGISTER)?.isVisible = !loggedIn && hasAuthSupport
+        findPreference<Preference>(PreferenceKeys.LOGIN_REGISTER)?.isVisible = (!loggedIn || needsPrivacyKey) && hasAuthSupport
         findPreference<Preference>(PreferenceKeys.LOGOUT)?.isVisible = loggedIn && hasAuthSupport
         findPreference<Preference>(PreferenceKeys.DELETE_ACCOUNT)?.isVisible = loggedIn && hasAuthSupport
     }
