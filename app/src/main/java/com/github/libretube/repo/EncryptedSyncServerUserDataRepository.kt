@@ -32,7 +32,6 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
@@ -73,22 +72,10 @@ class EncryptedSyncServerUserDataRepository internal constructor(
         if ("playlistBookmarks" !in migrated) {
             change("playlistBookmarks", ExtendedPublicPlaylist.serializer(), ::legacyBookmarks) { }
         }
-        if (manifest.legacyEncryptedData && "playbackSpeeds" !in migrated) {
-            val payload = api.getLegacyEncryptedSync().payload
-            val speeds = payload?.let { crypto.decrypt(it).jsonObject["playbackSpeeds"] }
-                ?: JsonArray(emptyList())
-            val remote = api.getEncryptedSyncCollection("playbackSpeeds")
-            if (remote.payload == null) {
-                try {
-                    api.putEncryptedSyncCollection(
-                        "playbackSpeeds",
-                        PutEncryptedSyncCollection(remote.revision, crypto.encrypt(speeds))
-                    )
-                } catch (error: HttpException) {
-                    if (error.code() != 409) throw error
-                }
-            }
-        }
+    }
+
+    internal suspend fun updateChannelPlaybackSpeed(channelId: String, speed: Float?) {
+        ChannelPlaybackSpeedSettingsSync(api, crypto).update(channelId, speed)
     }
 
     override suspend fun login(username: String, password: String) = account.login(username, password)

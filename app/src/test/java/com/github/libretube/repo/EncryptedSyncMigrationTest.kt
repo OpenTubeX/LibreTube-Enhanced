@@ -90,28 +90,22 @@ class EncryptedSyncMigrationTest {
     }
 
     @Test
-    fun keepsLegacyPlaybackSpeedsWhenAnotherDeviceWinsInitialization() = runBlocking {
+    fun leavesLegacyPlaybackSpeedsUntouchedWithoutAccessingDeprecatedCollection() = runBlocking {
         val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
         val crypto = EncryptedSyncCrypto.fromPassphrase("privacy-passphrase-123", null)
-        val speeds = JsonHelper.json.parseToJsonElement("""[{"videoId":"video-1","speed":1.25}]""")
-        val legacyPayload = crypto.encrypt(JsonHelper.json.parseToJsonElement(
-            """{"playbackSpeeds":$speeds}"""
-        ))
-        var uploaded: String? = null
+        val legacyDocument = JsonHelper.json.parseToJsonElement(
+            """{"playbackSpeeds":[{"channel_id":"UC123","playback_speed":1.25}]}"""
+        )
+        val legacyPayload = crypto.encrypt(legacyDocument)
+        var storedLegacyPayload = legacyPayload
+        val requests = mutableListOf<Pair<String, String>>()
         server.createContext("/v1/encrypted_sync") { exchange ->
+            requests += exchange.requestMethod to exchange.requestURI.path
             val (status, body) = when (exchange.requestURI.path) {
                 "/v1/encrypted_sync" -> 200 to
                     """{"collections":[{"collection":"subscriptions","revision":1},{"collection":"playlists","revision":1},{"collection":"history","revision":1},{"collection":"profiles","revision":1},{"collection":"playlistBookmarks","revision":1}],"legacy_data":false,"legacy_encrypted_data":true}"""
                 "/v1/encrypted_sync/legacy" -> 200 to
-                    """{"collection":"legacy","revision":1,"payload":${JsonHelper.json.encodeToString(legacyPayload)}}"""
-                "/v1/encrypted_sync/playbackSpeeds" -> if (exchange.requestMethod == "GET") {
-                    200 to """{"collection":"playbackSpeeds","revision":0,"payload":null}"""
-                } else {
-                    uploaded = JsonHelper.json.parseToJsonElement(
-                        exchange.requestBody.bufferedReader().readText()
-                    ).jsonObject.getValue("payload").jsonPrimitive.content
-                    409 to "conflict"
-                }
+                    """{"collection":"legacy","revision":1,"payload":${JsonHelper.json.encodeToString(storedLegacyPayload)}}"""
                 else -> error("Unexpected request: ${exchange.requestURI.path}")
             }
             val bytes = body.toByteArray()
@@ -129,7 +123,156 @@ class EncryptedSyncMigrationTest {
 
             EncryptedSyncServerUserDataRepository(api, crypto).migrateLegacyData()
 
-            assertEquals(speeds, crypto.decrypt(requireNotNull(uploaded)))
+            assertTrue(requests.none { (_, path) -> path == "/v1/encrypted_sync/playbackSpeeds" })
+            assertTrue(requests.none { (method, path) -> method == "PUT" && path == "/v1/encrypted_sync/legacy" })
+            assertEquals(legacyPayload, storedLegacyPayload)
+            assertEquals(legacyDocument, crypto.decrypt(storedLegacyPayload))
+        } finally {
+            server.stop(0)
+        }
+    }
+
+    @Test
+    fun syncsChannelPlaybackSpeedsThroughSettingsWithoutChangingOtherSettings() = runBlocking {
+        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
+        val crypto = EncryptedSyncCrypto.fromPassphrase("privacy-passphrase-123", null)
+        val initialSettings = JsonHelper.json.parseToJsonElement(
+            """[{"key":"theme","value":"dark","updatedAt":10},{"key":"channelPlaybackSpeeds","value":"{\"UC123\":1.25}","updatedAt":20}]"""
+        )
+        var payload = crypto.encrypt(initialSettings)
+        var revision = 1L
+        val requests = mutableListOf<Pair<String, String>>()
+        server.createContext("/v1/encrypted_sync") { exchange ->
+            requests += exchange.requestMethod to exchange.requestURI.path
+            assertEquals("/v1/encrypted_sync/settings", exchange.requestURI.path)
+            val body = if (exchange.requestMethod == "GET") {
+                """{"collection":"settings","revision":$revision,"payload":${JsonHelper.json.encodeToString(payload)}}"""
+            } else {
+                val request = JsonHelper.json.parseToJsonElement(
+                    exchange.requestBody.bufferedReader().readText()
+                ).jsonObject
+                assertEquals(revision.toString(), request.getValue("revision").jsonPrimitive.content)
+                payload = request.getValue("payload").jsonPrimitive.content
+                revision++
+                """{"collection":"settings","revision":$revision,"payload":null}"""
+            }
+            val bytes = body.toByteArray()
+            exchange.responseHeaders.add("Content-Type", "application/json")
+            exchange.sendResponseHeaders(200, bytes.size.toLong())
+            exchange.responseBody.use { it.write(bytes) }
+        }
+        server.start()
+        try {
+            val api = Retrofit.Builder()
+                .baseUrl("http://127.0.0.1:${server.address.port}/")
+                .addConverterFactory(JsonHelper.json.asConverterFactory("application/json".toMediaType()))
+                .build()
+                .create<LibreTubeSyncServerApi>()
+            val sync = ChannelPlaybackSpeedSettingsSync(api, crypto)
+
+            assertEquals(mapOf("UC123" to 1.25f), sync.syncOnLogin(mapOf("local" to 2f)))
+            assertEquals(initialSettings, crypto.decrypt(payload))
+
+            sync.update("UC456", 1.5f)
+            sync.update("UC123", null)
+
+            val settings = crypto.decrypt(payload).jsonArray
+            assertEquals(initialSettings.jsonArray[0], settings[0])
+            val value = settings[1].jsonObject.getValue("value").jsonPrimitive.content
+            assertEquals(
+                JsonHelper.json.parseToJsonElement("""{"UC456":1.5}"""),
+                JsonHelper.json.parseToJsonElement(value)
+            )
+            assertTrue(requests.all { (_, path) -> path == "/v1/encrypted_sync/settings" })
+        } finally {
+            server.stop(0)
+        }
+    }
+
+    @Test
+    fun uploadsLocalChannelSpeedsOnlyWhenSettingsEntryIsMissing() = runBlocking {
+        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
+        val crypto = EncryptedSyncCrypto.fromPassphrase("privacy-passphrase-123", null)
+        var payload = crypto.encrypt(JsonHelper.json.parseToJsonElement(
+            """[{"key":"theme","value":"dark","updatedAt":10}]"""
+        ))
+        var revision = 1L
+        server.createContext("/v1/encrypted_sync/settings") { exchange ->
+            val body = if (exchange.requestMethod == "GET") {
+                """{"collection":"settings","revision":$revision,"payload":${JsonHelper.json.encodeToString(payload)}}"""
+            } else {
+                val request = JsonHelper.json.parseToJsonElement(
+                    exchange.requestBody.bufferedReader().readText()
+                ).jsonObject
+                payload = request.getValue("payload").jsonPrimitive.content
+                revision++
+                """{"collection":"settings","revision":$revision,"payload":null}"""
+            }
+            val bytes = body.toByteArray()
+            exchange.responseHeaders.add("Content-Type", "application/json")
+            exchange.sendResponseHeaders(200, bytes.size.toLong())
+            exchange.responseBody.use { it.write(bytes) }
+        }
+        server.start()
+        try {
+            val api = Retrofit.Builder()
+                .baseUrl("http://127.0.0.1:${server.address.port}/")
+                .addConverterFactory(JsonHelper.json.asConverterFactory("application/json".toMediaType()))
+                .build()
+                .create<LibreTubeSyncServerApi>()
+            val local = mapOf("UC123" to 1.5f)
+
+            assertEquals(local, ChannelPlaybackSpeedSettingsSync(api, crypto).syncOnLogin(local))
+
+            val settings = crypto.decrypt(payload).jsonArray
+            assertEquals("theme", settings[0].jsonObject.getValue("key").jsonPrimitive.content)
+            assertEquals("channelPlaybackSpeeds", settings[1].jsonObject.getValue("key").jsonPrimitive.content)
+            assertEquals(
+                JsonHelper.json.parseToJsonElement("""{"UC123":1.5}"""),
+                JsonHelper.json.parseToJsonElement(settings[1].jsonObject.getValue("value").jsonPrimitive.content)
+            )
+        } finally {
+            server.stop(0)
+        }
+    }
+
+    @Test
+    fun malformedChannelSpeedSettingDoesNotBlockLoginOrOverwriteSettings() = runBlocking {
+        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
+        val crypto = EncryptedSyncCrypto.fromPassphrase("privacy-passphrase-123", null)
+        var payload = ""
+        var puts = 0
+        server.createContext("/v1/encrypted_sync/settings") { exchange ->
+            if (exchange.requestMethod == "PUT") puts++
+            val body = """{"collection":"settings","revision":1,"payload":${JsonHelper.json.encodeToString(payload)}}"""
+            val bytes = body.toByteArray()
+            exchange.responseHeaders.add("Content-Type", "application/json")
+            exchange.sendResponseHeaders(200, bytes.size.toLong())
+            exchange.responseBody.use { it.write(bytes) }
+        }
+        server.start()
+        try {
+            val api = Retrofit.Builder()
+                .baseUrl("http://127.0.0.1:${server.address.port}/")
+                .addConverterFactory(JsonHelper.json.asConverterFactory("application/json".toMediaType()))
+                .build()
+                .create<LibreTubeSyncServerApi>()
+            val sync = ChannelPlaybackSpeedSettingsSync(api, crypto)
+            val local = mapOf("UC123" to 1.5f)
+            val malformed = listOf(
+                """{"key":"channelPlaybackSpeeds"}""",
+                """{"key":"channelPlaybackSpeeds","value":"not-json"}""",
+                """{"key":"channelPlaybackSpeeds","value":"{\"UC123\":{}}"}"""
+            )
+            for (entry in malformed) {
+                payload = crypto.encrypt(JsonHelper.json.parseToJsonElement("""[$entry]"""))
+                val original = payload
+
+                assertEquals(local, sync.syncOnLogin(local))
+                assertTrue(runCatching { sync.update("UC456", 2f) }.isFailure)
+                assertEquals(original, payload)
+            }
+            assertEquals(0, puts)
         } finally {
             server.stop(0)
         }

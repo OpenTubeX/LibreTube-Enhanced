@@ -17,6 +17,7 @@ import com.github.libretube.enums.SyncServerType
 import com.github.libretube.databinding.DialogLoginBinding
 import com.github.libretube.extensions.toastFromMainDispatcher
 import com.github.libretube.helpers.PreferenceHelper
+import com.github.libretube.helpers.PlayerHelper
 import com.github.libretube.repo.UserDataRepositoryHelper
 import com.github.libretube.ui.preferences.InstanceSettings.Companion.INSTANCE_DIALOG_REQUEST_KEY
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -92,6 +93,7 @@ class LoginDialog : DialogFragment() {
                 withContext(Dispatchers.IO) {
                     repository.prepareSync(token, password, privacyPassphrase)
                     PreferenceHelper.setToken(token)
+                    PlayerHelper.finishChannelSpeedSync()
                     PreferenceHelper.setUsername(username)
                 }
 

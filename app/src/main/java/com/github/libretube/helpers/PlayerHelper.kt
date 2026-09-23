@@ -15,6 +15,7 @@ import androidx.annotation.OptIn
 import androidx.annotation.StringRes
 import androidx.core.app.PendingIntentCompat
 import androidx.core.app.RemoteActionCompat
+import androidx.core.content.edit
 import androidx.core.content.getSystemService
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.drawable.IconCompat
@@ -47,16 +48,21 @@ import com.github.libretube.api.obj.Subtitle
 import com.github.libretube.api.obj.WatchHistoryEntryMetadata
 import com.github.libretube.constants.PreferenceKeys
 import com.github.libretube.db.DatabaseHelper
-import com.github.libretube.enums.PlayerEvent
 import com.github.libretube.enums.SbSkipOptions
+import com.github.libretube.enums.PlayerEvent
+import com.github.libretube.enums.SyncServerType
 import com.github.libretube.extensions.TAG
 import com.github.libretube.extensions.seekBy
 import com.github.libretube.extensions.togglePlayPauseState
 import com.github.libretube.obj.VideoStats
+import com.github.libretube.repo.EncryptedSyncServerUserDataRepository
 import com.github.libretube.repo.UserDataRepositoryHelper
 import com.github.libretube.util.TextUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
 import kotlin.math.max
@@ -64,6 +70,93 @@ import kotlin.math.roundToInt
 import kotlin.time.Clock
 
 object PlayerHelper {
+    private const val CHANNEL_SPEED_PREFIX = "channel_speed_"
+    private val channelSpeedLock = Any()
+    private val pendingChannelSpeeds = mutableMapOf<String, Pair<String, Float?>>()
+    private var loginSpeedEdits: MutableMap<String, Float?>? = null
+    private val channelSpeedWake = Channel<Unit>(Channel.CONFLATED)
+    private val channelSpeedScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    init {
+        channelSpeedScope.launch {
+            var retryDelay = 1_000L
+            for (signal in channelSpeedWake) {
+                delay(400)
+                val updates = synchronized(pendingChannelSpeeds) {
+                    pendingChannelSpeeds.toMap()
+                }
+                var retry = false
+                for ((channelId, update) in updates) {
+                    if (synchronized(channelSpeedLock) { loginSpeedEdits != null }) {
+                        retry = true
+                        break
+                    }
+                    if (!canSyncChannelSpeeds() || PreferenceHelper.getToken() != update.first) {
+                        synchronized(pendingChannelSpeeds) {
+                            if (pendingChannelSpeeds[channelId] == update) pendingChannelSpeeds.remove(channelId)
+                        }
+                        continue
+                    }
+                    try {
+                        EncryptedSyncServerUserDataRepository().updateChannelPlaybackSpeed(channelId, update.second)
+                        synchronized(pendingChannelSpeeds) {
+                            if (pendingChannelSpeeds[channelId] == update) pendingChannelSpeeds.remove(channelId)
+                        }
+                    } catch (error: Exception) {
+                        Log.w("PlayerHelper", "Failed to sync channel playback speed", error)
+                        retry = true
+                    }
+                }
+                if (retry) {
+                    delay(retryDelay)
+                    retryDelay = (retryDelay * 2).coerceAtMost(60_000L)
+                    channelSpeedWake.trySend(Unit)
+                } else {
+                    retryDelay = 1_000L
+                }
+            }
+        }
+    }
+
+    private fun canSyncChannelSpeeds() =
+        UserDataRepositoryHelper.syncServerType == SyncServerType.LIBRETUBE &&
+            PreferenceHelper.getToken().isNotEmpty() && PreferenceHelper.getSyncPrivacySalt().isNotEmpty()
+
+    private fun queueChannelSpeedSync(channelId: String, speed: Float?) {
+        if (!canSyncChannelSpeeds()) return
+        synchronized(pendingChannelSpeeds) {
+            pendingChannelSpeeds[channelId] = PreferenceHelper.getToken() to speed
+        }
+        channelSpeedWake.trySend(Unit)
+    }
+
+    fun beginChannelSpeedSync(token: String): Map<String, Float> = synchronized(channelSpeedLock) {
+        loginSpeedEdits = synchronized(pendingChannelSpeeds) {
+            pendingChannelSpeeds.filterValues { it.first == token }
+                .mapValues { it.value.second }.toMutableMap()
+        }
+        getAllSavedChannelSpeeds()
+    }
+
+    fun applySyncedChannelSpeeds(remote: Map<String, Float>) = synchronized(channelSpeedLock) {
+        val merged = remote.toMutableMap()
+        loginSpeedEdits?.forEach { (channelId, speed) ->
+            if (speed == null) merged.remove(channelId) else merged[channelId] = speed
+        }
+        replaceAllSavedChannelSpeeds(merged)
+    }
+
+    fun finishChannelSpeedSync() = synchronized(channelSpeedLock) {
+        val edits = loginSpeedEdits ?: return@synchronized
+        loginSpeedEdits = null
+        edits.forEach { (channelId, speed) -> queueChannelSpeedSync(channelId, speed) }
+    }
+
+    fun cancelChannelSpeedSync() = synchronized(channelSpeedLock) {
+        loginSpeedEdits = null
+        channelSpeedWake.trySend(Unit)
+    }
+
     private const val ACTION_MEDIA_CONTROL = "media_control"
     const val CONTROL_TYPE = "control_type"
     const val SPONSOR_HIGHLIGHT_CATEGORY = "poi_highlight"
@@ -330,22 +423,27 @@ object PlayerHelper {
      */
     fun saveChannelPlaybackSpeed(channelId: String?, speed: Float) {
         if (channelId == null) return
-        
-        val channelSpeedKey = "channel_speed_$channelId"
-        PreferenceHelper.putString(channelSpeedKey, speed.toString())
+        synchronized(channelSpeedLock) {
+            PreferenceHelper.putString("$CHANNEL_SPEED_PREFIX$channelId", speed.toString())
+            if (loginSpeedEdits != null) {
+                loginSpeedEdits?.set(channelId, speed)
+            } else {
+                queueChannelSpeedSync(channelId, speed)
+            }
+        }
     }
 
     /**
      * Get all saved channel playback speeds
      * @return Map of channelId to speed (Float)
      */
-    fun getAllSavedChannelSpeeds(): Map<String, Float> {
+    fun getAllSavedChannelSpeeds(): Map<String, Float> = synchronized(channelSpeedLock) {
         val allPrefs = PreferenceHelper.settings.all
         val channelSpeeds = mutableMapOf<String, Float>()
         
         for ((key, value) in allPrefs) {
-            if (key.startsWith("channel_speed_")) {
-                val channelId = key.removePrefix("channel_speed_")
+            if (key.startsWith(CHANNEL_SPEED_PREFIX)) {
+                val channelId = key.removePrefix(CHANNEL_SPEED_PREFIX)
                 val speedString = value.toString().replace("F", "")
                 val speed = speedString.toFloatOrNull()
                 if (speed != null) {
@@ -354,15 +452,31 @@ object PlayerHelper {
             }
         }
         
-        return channelSpeeds
+        channelSpeeds
+    }
+
+    private fun replaceAllSavedChannelSpeeds(speeds: Map<String, Float>) {
+        PreferenceHelper.settings.edit(commit = true) {
+            PreferenceHelper.settings.all.keys.filter { it.startsWith(CHANNEL_SPEED_PREFIX) }
+                .forEach { remove(it) }
+            speeds.forEach { (channelId, speed) ->
+                putString("$CHANNEL_SPEED_PREFIX$channelId", speed.toString())
+            }
+        }
     }
 
     /**
      * Remove saved playback speed for a specific channel
      */
     fun removeChannelPlaybackSpeed(channelId: String) {
-        val channelSpeedKey = "channel_speed_$channelId"
-        PreferenceHelper.remove(channelSpeedKey)
+        synchronized(channelSpeedLock) {
+            PreferenceHelper.remove("$CHANNEL_SPEED_PREFIX$channelId")
+            if (loginSpeedEdits != null) {
+                loginSpeedEdits?.set(channelId, null)
+            } else {
+                queueChannelSpeedSync(channelId, null)
+            }
+        }
     }
 
     val swipeGestureEnabled: Boolean
