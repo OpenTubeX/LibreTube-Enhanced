@@ -15,6 +15,9 @@
     <string name="username">Username</string>
     <string name="password">Password</string>
     <string name="login">Log in</string>
+    <string name="login_signing_in">Signing in…</string>
+    <string name="login_creating_account">Creating account…</string>
+    <string name="login_preparing_sync">Preparing sync…</string>
     <string name="register">Register</string>
     <string name="logout">Log out</string>
     <string name="cancel">Cancel</string>

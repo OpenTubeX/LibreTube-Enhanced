@@ -5,6 +5,7 @@ import android.content.DialogInterface
 import android.os.Bundle
 import android.util.Patterns
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.core.os.bundleOf
 import androidx.core.view.isVisible
 import androidx.fragment.app.DialogFragment
@@ -19,11 +20,14 @@ import com.github.libretube.helpers.PreferenceHelper
 import com.github.libretube.repo.UserDataRepositoryHelper
 import com.github.libretube.ui.preferences.InstanceSettings.Companion.INSTANCE_DIALOG_REQUEST_KEY
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class LoginDialog : DialogFragment() {
+    private var signingIn = false
+
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val binding = DialogLoginBinding.inflate(layoutInflater)
         val alreadyLoggedIn = PreferenceHelper.getToken().isNotBlank()
@@ -42,7 +46,7 @@ class LoginDialog : DialogFragment() {
                 val password = binding.password.text?.toString()
 
                 if (!email.isNullOrEmpty() && !password.isNullOrEmpty()) {
-                    signIn(email, password, binding.privacyPassphrase.text?.toString().orEmpty())
+                    signIn(binding, email, password, binding.privacyPassphrase.text?.toString().orEmpty())
                 } else {
                     Toast.makeText(context, R.string.empty, Toast.LENGTH_SHORT).show()
                 }
@@ -52,9 +56,9 @@ class LoginDialog : DialogFragment() {
                 val password = binding.password.text?.toString().orEmpty()
 
                 if (isEmail(email)) {
-                    showPrivacyAlertDialog(email, password, binding.privacyPassphrase.text?.toString().orEmpty())
+                    showPrivacyAlertDialog(binding, email, password, binding.privacyPassphrase.text?.toString().orEmpty())
                 } else if (email.isNotEmpty() && password.isNotEmpty()) {
-                    signIn(email, password, binding.privacyPassphrase.text?.toString().orEmpty(), true)
+                    signIn(binding, email, password, binding.privacyPassphrase.text?.toString().orEmpty(), true)
                 } else {
                     Toast.makeText(context, R.string.empty, Toast.LENGTH_SHORT).show()
                 }
@@ -63,53 +67,77 @@ class LoginDialog : DialogFragment() {
     }
 
     private fun signIn(
+        binding: DialogLoginBinding,
         username: String, password: String, privacyPassphrase: String,
         createNewAccount: Boolean = false
     ) {
-        lifecycleScope.launch(Dispatchers.IO) {
-            @Suppress("DEPRECATION") val token = try {
-                if (createNewAccount) {
-                    UserDataRepositoryHelper.userDataRepository.validateRegistration(password, privacyPassphrase)
-                    UserDataRepositoryHelper.userDataRepository.register(username, password)
-                } else {
-                    UserDataRepositoryHelper.userDataRepository.login(username, password)
-                }
-            } catch (e: Exception) {
-                context?.toastFromMainDispatcher(e.message.orEmpty())
-                return@launch
-            }
+        if (signingIn) return
+        signingIn = true
+        setBusy(binding, if (createNewAccount) R.string.login_creating_account else R.string.login_signing_in)
 
+        lifecycleScope.launch {
             try {
                 @Suppress("DEPRECATION")
-                UserDataRepositoryHelper.userDataRepository.prepareSync(token, password, privacyPassphrase)
-            } catch (e: Exception) {
-                context?.toastFromMainDispatcher(e.message.orEmpty())
-                return@launch
-            }
+                val repository = UserDataRepositoryHelper.userDataRepository
+                val token = withContext(Dispatchers.IO) {
+                    if (createNewAccount) {
+                        repository.validateRegistration(password, privacyPassphrase)
+                        repository.register(username, password)
+                    } else {
+                        repository.login(username, password)
+                    }
+                }
 
-            context?.toastFromMainDispatcher(
-                if (createNewAccount) R.string.registered else R.string.loggedIn
-            )
+                binding.loginProgressStatus.setText(R.string.login_preparing_sync)
+                withContext(Dispatchers.IO) {
+                    repository.prepareSync(token, password, privacyPassphrase)
+                    PreferenceHelper.setToken(token)
+                    PreferenceHelper.setUsername(username)
+                }
 
-            PreferenceHelper.setToken(token)
-            PreferenceHelper.setUsername(username)
-
-            withContext(Dispatchers.Main) {
+                context?.toastFromMainDispatcher(
+                    if (createNewAccount) R.string.registered else R.string.loggedIn
+                )
                 setFragmentResult(
                     INSTANCE_DIALOG_REQUEST_KEY,
                     bundleOf(IntentData.loginTask to true)
                 )
+                dismiss()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                context?.toastFromMainDispatcher(e.message.orEmpty())
+            } finally {
+                signingIn = false
+                if (dialog?.isShowing == true) setBusy(binding, null)
             }
-            dialog?.dismiss()
         }
     }
 
-    private fun showPrivacyAlertDialog(email: String, password: String, privacyPassphrase: String) {
+    private fun setBusy(binding: DialogLoginBinding, status: Int?) {
+        val busy = status != null
+        binding.loginProgress.isVisible = busy
+        if (status != null) binding.loginProgressStatus.setText(status)
+        binding.username.isEnabled = !busy
+        binding.password.isEnabled = !busy
+        binding.privacyPassphrase.isEnabled = !busy
+        (dialog as? AlertDialog)?.apply {
+            getButton(DialogInterface.BUTTON_POSITIVE)?.isEnabled = !busy
+            getButton(DialogInterface.BUTTON_NEGATIVE)?.isEnabled = !busy
+        }
+    }
+
+    private fun showPrivacyAlertDialog(
+        binding: DialogLoginBinding,
+        email: String,
+        password: String,
+        privacyPassphrase: String
+    ) {
         MaterialAlertDialogBuilder(requireContext())
             .setTitle(R.string.privacy_alert)
             .setMessage(R.string.username_email)
             .setNegativeButton(R.string.proceed) { _, _ ->
-                signIn(email, password, privacyPassphrase, true)
+                signIn(binding, email, password, privacyPassphrase, true)
             }
             .setPositiveButton(R.string.cancel, null)
             .show()
