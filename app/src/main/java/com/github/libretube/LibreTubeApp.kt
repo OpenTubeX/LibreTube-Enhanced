@@ -10,6 +10,7 @@ import com.github.libretube.helpers.NotificationHelper
 import com.github.libretube.helpers.PreferenceHelper
 import com.github.libretube.helpers.ProxyHelper
 import com.github.libretube.helpers.ShortcutHelper
+import com.github.libretube.repo.UserDataRepositoryHelper
 import com.github.libretube.util.ExceptionHandler
 
 class LibreTubeApp : Application() {
@@ -27,6 +28,9 @@ class LibreTubeApp : Application() {
          */
         PreferenceHelper.initialize(applicationContext)
         PreferenceHelper.migrate()
+        // An update can stop the process before InstanceSettings.onDestroy
+        // resets an unauthenticated sync source.
+        UserDataRepositoryHelper.fallBackToLocalIfLoggedOut()
 
         /**
          * Set the api and the auth api url

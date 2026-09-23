@@ -14,6 +14,12 @@ object UserDataRepositoryHelper {
             else -> SyncServerType.NONE
         }
 
+    fun fallBackToLocalIfLoggedOut(): Boolean {
+        if (loggedIn || syncServerType == SyncServerType.NONE) return false
+        PreferenceHelper.putString(PreferenceKeys.SYNC_SERVER_TYPE, SyncServerType.NONE.name.lowercase())
+        return true
+    }
+
     @Deprecated("DO NOT use this directly, use the wrappers from PlaylistHelper and SubscriptionHelper instead!")
     val userDataRepository: UserDataRepository
         get() = userDataRepositoryFor(syncServerType)
