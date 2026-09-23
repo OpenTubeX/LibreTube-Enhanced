@@ -20,6 +20,36 @@ import java.net.InetSocketAddress
 
 class EncryptedSyncMigrationTest {
     @Test
+    fun playlistCountUsesSyncedVideosWhenHeaderOmitsCount() = runBlocking {
+        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
+        val crypto = EncryptedSyncCrypto.fromPassphrase("privacy-passphrase-123", null)
+        val video = """{"duration":100,"id":"video-1","thumbnail_url":"","title":"Video","upload_date":0,"uploader":{"id":"channel-1","name":"Channel","verified":false}}"""
+        val playlist = """[{"playlist":{"id":"playlist-1","title":"Favorites","description":""},"videos":[$video,${video.replace("video-1", "video-2")}]}]"""
+        val payload = crypto.encrypt(JsonHelper.json.parseToJsonElement(playlist))
+        server.createContext("/v1/encrypted_sync/playlists") { exchange ->
+            val body = """{"collection":"playlists","revision":1,"payload":${JsonHelper.json.encodeToString(payload)}}"""
+            val bytes = body.toByteArray()
+            exchange.responseHeaders.add("Content-Type", "application/json")
+            exchange.sendResponseHeaders(200, bytes.size.toLong())
+            exchange.responseBody.use { it.write(bytes) }
+        }
+        server.start()
+        try {
+            val api = Retrofit.Builder()
+                .baseUrl("http://127.0.0.1:${server.address.port}/")
+                .addConverterFactory(JsonHelper.json.asConverterFactory("application/json".toMediaType()))
+                .build()
+                .create<LibreTubeSyncServerApi>()
+
+            val playlists = EncryptedSyncServerUserDataRepository(api, crypto).getPlaylists()
+
+            assertEquals(2L, playlists.single().videos)
+        } finally {
+            server.stop(0)
+        }
+    }
+
+    @Test
     fun copiesLegacyPlaintextCollectionsBeforeTheyAreRemoved() = runBlocking {
         val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
         val uploaded = mutableMapOf<String, String>()

@@ -201,7 +201,7 @@ class EncryptedSyncServerUserDataRepository internal constructor(
 
     override suspend fun getPlaylists(): List<Playlists> =
         read("playlists", PlaylistResponse.serializer(), ::legacyPlaylists)
-            .map { it.playlist.toPipedPlaylists() }
+            .map { it.playlist.copy(videoCount = it.videos.size.toLong()).toPipedPlaylists() }
 
     override suspend fun getPlaylist(playlistId: String): Playlist =
         read("playlists", PlaylistResponse.serializer(), ::legacyPlaylists)

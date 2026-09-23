@@ -35,6 +35,7 @@ import com.github.libretube.ui.dialogs.CreatePlaylistDialog
 import com.github.libretube.ui.dialogs.CreatePlaylistDialog.Companion.CREATE_PLAYLIST_DIALOG_REQUEST_KEY
 import com.github.libretube.ui.models.CommonPlayerViewModel
 import com.github.libretube.ui.sheets.BaseBottomSheet
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -145,8 +146,15 @@ class LibraryFragment : DynamicLayoutManagerFragment(R.layout.fragment_library) 
 
     private fun initBookmarks() {
         lifecycleScope.launch {
-            val bookmarks = withContext(Dispatchers.IO) {
-                UserDataRepositoryHelper.userDataRepository.getPlaylistBookmarks()
+            val bookmarks = try {
+                withContext(Dispatchers.IO) {
+                    UserDataRepositoryHelper.userDataRepository.getPlaylistBookmarks()
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG(), "Could not load playlist bookmarks", e)
+                return@launch
             }
 
             val binding = _binding ?: return@launch
@@ -173,14 +181,17 @@ class LibraryFragment : DynamicLayoutManagerFragment(R.layout.fragment_library) 
                     withContext(Dispatchers.IO) {
                         PlaylistsHelper.getPlaylists()
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Log.e(TAG(), e.toString())
                     Toast.makeText(context, R.string.unknown_error, Toast.LENGTH_SHORT).show()
                     return@repeatOnLifecycle
+                } finally {
+                    _binding?.playlistRefresh?.isRefreshing = false
                 }
 
                 val binding = _binding ?: return@repeatOnLifecycle
-                binding.playlistRefresh.isRefreshing = false
 
                 // also update playlists recycler when the playlists are empty in order to remove
                 // playlists that were removed by the user
