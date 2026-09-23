@@ -264,6 +264,20 @@ object PreferenceHelper {
 
     fun setToken(newValue: String) {
         authSettings.edit { putString(PreferenceKeys.TOKEN, newValue) }
+        if (newValue.isEmpty()) setSyncPrivacy("", "")
+    }
+
+    fun getSyncPrivacyKey(): String =
+        authSettings.getString(PreferenceKeys.SYNC_PRIVACY_KEY, "").orEmpty()
+
+    fun getSyncPrivacySalt(): String =
+        authSettings.getString(PreferenceKeys.SYNC_PRIVACY_SALT, "").orEmpty()
+
+    fun setSyncPrivacy(key: String, salt: String) {
+        authSettings.edit {
+            putString(PreferenceKeys.SYNC_PRIVACY_KEY, key)
+            putString(PreferenceKeys.SYNC_PRIVACY_SALT, salt)
+        }
     }
 
     fun getUsername(): String {

@@ -9,6 +9,11 @@ data class SubscriptionGroup(
     @SerialName(value = "id")
     val id: String,
     @SerialName(value = "title")
-    val title: String
+    val title: String,
+    @SerialName(value = "local_id")
+    val localId: String? = null,
+    @SerialName(value = "bg_color")
+    val backgroundColor: String? = null,
+    @SerialName(value = "text_color")
+    val textColor: String? = null
 )
-

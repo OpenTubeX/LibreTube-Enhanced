@@ -19,7 +19,11 @@ object UserDataRepositoryHelper {
 
     private fun userDataRepositoryFor(type: SyncServerType): UserDataRepository = when (type) {
         SyncServerType.PIPED -> PipedUserDataRepository()
-        SyncServerType.LIBRETUBE -> LibreTubeSyncServerUserDataRepository()
+        SyncServerType.LIBRETUBE -> if (PreferenceHelper.getSyncPrivacyKey().isNotEmpty()) {
+            EncryptedSyncServerUserDataRepository()
+        } else {
+            LibreTubeSyncServerUserDataRepository()
+        }
         else -> LocalUserDataRepository()
     }
 

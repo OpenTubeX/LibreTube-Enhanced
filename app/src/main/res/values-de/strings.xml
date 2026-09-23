@@ -557,6 +557,11 @@
     <string name="sync_server_type">Benutzerdaten (Abonnements, Wiedergabelisten) synchronisieren über</string>
     <string name="sync_type_summary_none">Speichern Sie alle Benutzerdaten offline in der App. Das bedeutet, dass Sie keine Daten zwischen Ihren Geräten synchronisieren können. Dies könnte jedoch die richtige Wahl sein, wenn Sie nur ein einziges Gerät verwenden oder keine Wert auf die Synchronisierung zwischen Geräten legen.</string>
     <string name="sync_type_summary_libretube">Speichern Sie Wiedergabelisten und Abonnementdaten auf dem Synchronisierungsserver von LibreTube (%1$s). So können Sie sich auf jedem beliebigen anderen Gerät bei Ihrem Konto anmelden und haben Zugriff auf Ihre Abonnements und Wiedergabelisten. Datenschutzhinweis: Nutzerdaten werden serverseitig pseudonymisiert, jedoch nicht durchgehend verschlüsselt. Auf Wunsch können Sie auch eine eigene Version des Servers betreiben, in der Regel sollte der offizielle Server jedoch völlig ausreichen.</string>
+    <string name="sync_type_summary_sync_server">Synchronisiere Abos, Wiedergabelisten und Verlauf über %1$s. Server mit verschlüsselter Synchronisierung erfordern eine separate Datenschutz-Passphrase; deine Daten werden vor dem Hochladen verschlüsselt.</string>
+    <string name="sync_privacy_passphrase">Datenschutz-Passphrase (für verschlüsselte Synchronisierung)</string>
+    <string name="opentubex_sync_server">OpenTubeX-Synchronisierungsserver</string>
+    <string name="sync_server_url_label">URL des Synchronisierungsservers</string>
+    <string name="sync_server_type_label">Nutzerdaten synchronisieren über</string>
     <string name="sync_type_summary_piped">Nur für Experten, veraltet:\nSpeichern Sie Daten zu Wiedergabelisten und Abonnements auf Piped (%1$s). Da es keine öffentlichen Piped-Instanzen mehr gibt, müssen Sie Ihre eigene Piped-Instanz betreiben.</string>
     <string name="switch_sync_type_warning">Falls Sie zuvor einen anderen Synchronisierungstyp verwendet haben, erstellen Sie bitte zunächst eine Sicherungskopie Ihrer Abonnements und Wiedergabelisten. Anschließend können Sie den Synchronisierungstyp in den Instanz-Einstellungen ändern und Ihre Daten aus der Sicherungskopie erneut importieren.</string>
     <string name="already_downloaded">Du hast dieses Video bereits heruntergeladen!</string>

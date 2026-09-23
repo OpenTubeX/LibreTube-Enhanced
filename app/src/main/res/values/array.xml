@@ -12,7 +12,7 @@
 
     <string-array name="syncProvider">
         <item>@string/none</item>
-        <item>@string/libretube_sync_server</item>
+        <item>@string/opentubex_sync_server</item>
         <item>@string/piped</item>
     </string-array>
 

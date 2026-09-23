@@ -1,6 +1,9 @@
 package com.github.libretube.repo
 
 import com.github.libretube.api.RetrofitInstance
+import com.github.libretube.api.JsonHelper
+import com.github.libretube.api.ltsync.EncryptedSyncCrypto
+import com.github.libretube.api.ltsync.obj.HealthResponse
 import com.github.libretube.api.ltsync.obj.Channel
 import com.github.libretube.api.ltsync.obj.CreatePlaylist
 import com.github.libretube.api.ltsync.obj.CreateVideo
@@ -10,6 +13,7 @@ import com.github.libretube.api.ltsync.obj.ExtendedPublicPlaylist
 import com.github.libretube.api.ltsync.obj.ExtendedSubscriptionGroup
 import com.github.libretube.api.ltsync.obj.ExtendedWatchHistoryItem
 import com.github.libretube.api.ltsync.obj.LoginUser
+import com.github.libretube.api.ltsync.obj.PutEncryptedSyncCollection
 import com.github.libretube.api.ltsync.obj.RegisterUser
 import com.github.libretube.api.ltsync.obj.WatchHistoryItem
 import com.github.libretube.api.ltsync.obj.WatchedState
@@ -23,6 +27,8 @@ import com.github.libretube.db.obj.PlaylistBookmark
 import com.github.libretube.db.obj.SubscriptionGroup
 import com.github.libretube.enums.WatchHistoryStatus
 import com.github.libretube.extensions.toID
+import com.github.libretube.helpers.PreferenceHelper
+import kotlinx.serialization.json.JsonArray
 import retrofit2.HttpException
 
 class LibreTubeSyncServerUserDataRepository : UserDataRepository {
@@ -60,6 +66,48 @@ class LibreTubeSyncServerUserDataRepository : UserDataRepository {
                 )
             ).jwt
         }
+    }
+
+    override suspend fun prepareSync(token: String, password: String, privacyPassphrase: String) {
+        val api = RetrofitInstance.buildRetrofitInstance<com.github.libretube.api.ltsync.LibreTubeSyncServerApi>(
+            baseUrl,
+            headersAccessor = { mapOf("Authorization" to token) }
+        )
+        val health = api.health().string().trim()
+        val capabilities = if (health == "OK") null else
+            JsonHelper.json.decodeFromString<HealthResponse>(health).capabilities
+        if (capabilities?.encryptedSync != 1) {
+            require(privacyPassphrase.isEmpty()) { "This server does not support encrypted sync" }
+            PreferenceHelper.setSyncPrivacy("", "")
+            return
+        }
+        require(privacyPassphrase.length >= 12) { "Privacy passphrase must have at least 12 characters" }
+        require(privacyPassphrase != password) { "Privacy passphrase must differ from account password" }
+        val manifest = api.getEncryptedSyncManifest()
+        var payload: String? = null
+        for (entry in manifest.collections) {
+            payload = api.getEncryptedSyncCollection(entry.collection).payload
+            if (payload != null) break
+        }
+        if (payload == null && manifest.legacyEncryptedData) {
+            payload = api.getLegacyEncryptedSync().payload
+        }
+        var crypto = EncryptedSyncCrypto.fromPassphrase(privacyPassphrase, payload)
+        if (payload == null) {
+            try {
+                // Establish one shared salt before another device signs in.
+                api.putEncryptedSyncCollection(
+                    "settings", PutEncryptedSyncCollection(0, crypto.encrypt(JsonArray(emptyList())))
+                )
+            } catch (error: HttpException) {
+                if (error.code() != 409) throw error
+                val winner = api.getEncryptedSyncCollection("settings").payload
+                    ?: throw IllegalStateException("Encrypted sync was initialized on another device; try again")
+                crypto = EncryptedSyncCrypto.fromPassphrase(privacyPassphrase, winner)
+            }
+        }
+        EncryptedSyncServerUserDataRepository(api, crypto).migrateLegacyData()
+        PreferenceHelper.setSyncPrivacy(crypto.key, crypto.salt)
     }
 
     override suspend fun deleteAccount(password: String) {

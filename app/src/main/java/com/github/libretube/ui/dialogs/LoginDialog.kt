@@ -15,6 +15,7 @@ import androidx.lifecycle.lifecycleScope
 import com.github.libretube.BuildConfig
 import com.github.libretube.R
 import com.github.libretube.constants.IntentData
+import com.github.libretube.enums.SyncServerType
 import com.github.libretube.databinding.DialogLoginBinding
 import com.github.libretube.extensions.toastFromMainDispatcher
 import com.github.libretube.helpers.PreferenceHelper
@@ -28,6 +29,8 @@ import kotlinx.coroutines.withContext
 class LoginDialog : DialogFragment() {
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val binding = DialogLoginBinding.inflate(layoutInflater)
+        binding.privacyPassphraseInput.isVisible =
+            UserDataRepositoryHelper.syncServerType == SyncServerType.LIBRETUBE
 
         @Suppress("DEPRECATION")
         val oidcAuthUrl =
@@ -55,7 +58,7 @@ class LoginDialog : DialogFragment() {
                     val password = binding.password.text?.toString()
 
                     if (!email.isNullOrEmpty() && !password.isNullOrEmpty()) {
-                        signIn(email, password)
+                        signIn(email, password, binding.privacyPassphrase.text?.toString().orEmpty())
                     } else {
                         Toast.makeText(context, R.string.empty, Toast.LENGTH_SHORT).show()
                     }
@@ -65,9 +68,9 @@ class LoginDialog : DialogFragment() {
                     val password = binding.password.text?.toString().orEmpty()
 
                     if (isEmail(email)) {
-                        showPrivacyAlertDialog(email, password)
+                        showPrivacyAlertDialog(email, password, binding.privacyPassphrase.text?.toString().orEmpty())
                     } else if (email.isNotEmpty() && password.isNotEmpty()) {
-                        signIn(email, password, true)
+                        signIn(email, password, binding.privacyPassphrase.text?.toString().orEmpty(), true)
                     } else {
                         Toast.makeText(context, R.string.empty, Toast.LENGTH_SHORT).show()
                     }
@@ -75,7 +78,10 @@ class LoginDialog : DialogFragment() {
             }
     }
 
-    private fun signIn(username: String, password: String, createNewAccount: Boolean = false) {
+    private fun signIn(
+        username: String, password: String, privacyPassphrase: String,
+        createNewAccount: Boolean = false
+    ) {
         lifecycleScope.launch(Dispatchers.IO) {
             @Suppress("DEPRECATION") val token = try {
                 if (createNewAccount) {
@@ -83,6 +89,14 @@ class LoginDialog : DialogFragment() {
                 } else {
                     UserDataRepositoryHelper.userDataRepository.login(username, password)
                 }
+            } catch (e: Exception) {
+                context?.toastFromMainDispatcher(e.message.orEmpty())
+                return@launch
+            }
+
+            try {
+                @Suppress("DEPRECATION")
+                UserDataRepositoryHelper.userDataRepository.prepareSync(token, password, privacyPassphrase)
             } catch (e: Exception) {
                 context?.toastFromMainDispatcher(e.message.orEmpty())
                 return@launch
@@ -105,12 +119,12 @@ class LoginDialog : DialogFragment() {
         }
     }
 
-    private fun showPrivacyAlertDialog(email: String, password: String) {
+    private fun showPrivacyAlertDialog(email: String, password: String, privacyPassphrase: String) {
         MaterialAlertDialogBuilder(requireContext())
             .setTitle(R.string.privacy_alert)
             .setMessage(R.string.username_email)
             .setNegativeButton(R.string.proceed) { _, _ ->
-                signIn(email, password, true)
+                signIn(email, password, privacyPassphrase, true)
             }
             .setPositiveButton(R.string.cancel, null)
             .show()

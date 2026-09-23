@@ -34,7 +34,7 @@
     <PreferenceCategory android:title="@string/data_synchronization">
         <com.github.libretube.ui.views.ButtonGroupPreference
             android:icon="@drawable/ic_region"
-            android:title="@string/sync_server_type"
+            android:title="@string/sync_server_type_label"
             android:key="sync_server"
             app:defaultValue="none"
             app:optionEntries="@array/syncProvider"
@@ -48,9 +48,9 @@
 
         <EditTextPreference
             app:icon="@drawable/ic_server"
-            app:defaultValue="https://sync.libretube.dev"
+            app:defaultValue="https://sync.opentubex.org"
             app:key="libretube_sync_server_url"
-            app:title="@string/sync_server_url"
+            app:title="@string/sync_server_url_label"
             app:useSimpleSummaryProvider="true"/>
 
         <Preference
