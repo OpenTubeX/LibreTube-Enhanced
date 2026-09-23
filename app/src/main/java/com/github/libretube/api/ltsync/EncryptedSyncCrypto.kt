@@ -51,6 +51,9 @@ internal class EncryptedSyncCrypto private constructor(
     @Serializable
     private data class CollectionDocument<T>(val version: Int, val data: T)
 
+    @Serializable
+    private data class DocumentVersion(val version: Int)
+
     private val keyBytes = Base64.getDecoder().decode(key).also { require(it.size == 32) }
 
     /** Avoid building a second JSON object tree for large sync collections. */
@@ -69,6 +72,13 @@ internal class EncryptedSyncCrypto private constructor(
         ).jsonObject
         require(document["version"]?.jsonPrimitive?.content == "1") { "Unsupported sync document" }
         return document["data"] ?: document // Older OpenTubeX single-document sync.
+    }
+
+    private fun validatePayload(payload: String) {
+        val document = JsonHelper.json.decodeFromString<DocumentVersion>(
+            decryptDocumentBytes(payload).toString(Charsets.UTF_8)
+        )
+        require(document.version == 1) { "Unsupported sync document" }
     }
 
     private fun decryptDocumentBytes(payload: String): ByteArray {
@@ -194,7 +204,7 @@ internal class EncryptedSyncCrypto private constructor(
                 spec.clearPassword()
             }
             return EncryptedSyncCrypto(Base64.getEncoder().encodeToString(derived), salt).also {
-                if (remotePayload != null) it.decrypt(remotePayload)
+                if (remotePayload != null) it.validatePayload(remotePayload)
             }
         }
     }

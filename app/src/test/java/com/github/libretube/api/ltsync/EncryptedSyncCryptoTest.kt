@@ -37,7 +37,7 @@ class EncryptedSyncCryptoTest {
     }
 
     @Test
-    fun roundTripsTypedCollectionWithoutJsonTree() {
+    fun roundTripsTypedCollectionWithExistingEnvelope() {
         val crypto = EncryptedSyncCrypto.fromPassphrase("privacy-passphrase-123", compressedFixture)
         val entries = List(2_000) { Example("Video $it") }
 
@@ -46,6 +46,7 @@ class EncryptedSyncCryptoTest {
         assertEquals(entries, crypto.decryptCollection(payload, ListSerializer(Example.serializer())))
         assertEquals("Video 0", crypto.decrypt(payload).jsonArray.first()
             .jsonObject.getValue("name").jsonPrimitive.content)
+        assertEquals(crypto.key, EncryptedSyncCrypto.fromPassphrase("privacy-passphrase-123", payload).key)
     }
 
     @Test
