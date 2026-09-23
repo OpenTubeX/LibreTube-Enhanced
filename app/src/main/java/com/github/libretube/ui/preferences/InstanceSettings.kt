@@ -136,10 +136,8 @@ class InstanceSettings : BasePreferenceFragment() {
     }
 
     override fun onDestroy() {
-        @Suppress("DEPRECATION")
-        if (UserDataRepositoryHelper.userDataRepository.requiresLogin && PreferenceHelper.getToken().isEmpty()) {
+        if (UserDataRepositoryHelper.fallBackToLocalIfLoggedOut()) {
             context?.toastFromMainThread(R.string.missing_auth_falling_back)
-            PreferenceHelper.putString(PreferenceKeys.SYNC_SERVER_TYPE, SyncServerType.NONE.name.lowercase())
         }
 
         super.onDestroy()
