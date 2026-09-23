@@ -18,6 +18,7 @@ import com.github.libretube.extensions.runSafely
 import com.github.libretube.extensions.updateIfChanged
 import com.github.libretube.helpers.PlayerHelper
 import com.github.libretube.helpers.PreferenceHelper
+import com.github.libretube.repo.UserDataRepository
 import com.github.libretube.repo.UserDataRepositoryHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -134,17 +135,8 @@ class HomeViewModel : ViewModel() {
         )
     }
 
-    private suspend fun loadWatchingFromDB(): List<StreamItem> {
-        val (videos, _) = runCatching {
-            UserDataRepositoryHelper.userDataRepository.getWatchHistory(
-                20, null,
-                WatchHistoryStatus.ALL
-            )
-        }.getOrElse { Pair(emptyList(), null) }
-
-        return DatabaseHelper
-            .filterUnwatched(videos.map { it.video })
-    }
+    private suspend fun loadWatchingFromDB(): List<StreamItem> =
+        loadWatchingFromDB(UserDataRepositoryHelper.userDataRepository)
 
     private suspend fun tryLoadFeed(subscriptionsViewModel: SubscriptionsViewModel): List<StreamItem> {
         // use cached feed if available, otherwise load feed from API/database
@@ -158,6 +150,18 @@ class HomeViewModel : ViewModel() {
     }
 
     companion object {
+        internal suspend fun loadWatchingFromDB(repository: UserDataRepository): List<StreamItem> {
+            val (videos, _) = runCatching {
+                repository.getWatchHistory(20, null, WatchHistoryStatus.ALL)
+            }.getOrElse { Pair(emptyList(), null) }
+
+            return videos.filter { entry ->
+                entry.metadata.positionMillis?.let { position ->
+                    !DatabaseHelper.isVideoWatched(position, entry.video.duration ?: 0)
+                } ?: true
+            }.map { it.video }
+        }
+
         private const val UNUSUAL_LOAD_TIME_MS = 10000L
         private const val FEATURED = "featured"
         private const val WATCHING = "watching"
