@@ -9,7 +9,9 @@ import com.github.libretube.constants.PreferenceKeys
 import com.github.libretube.db.DatabaseHolder
 import com.github.libretube.db.obj.SubscriptionsFeedItem
 import com.github.libretube.enums.ContentFilter
+import com.github.libretube.enums.SyncServerType
 import com.github.libretube.extensions.parallelMap
+import com.github.libretube.extensions.sha256Sum
 import com.github.libretube.extensions.toID
 import com.github.libretube.helpers.NewPipeExtractorInstance
 import com.github.libretube.helpers.PreferenceHelper
@@ -59,11 +61,26 @@ class LocalFeedRepository : FeedRepository {
         }
         // Keep other sources' cached videos for when the user switches back.
         val channelIdSet = channelIds.toHashSet()
+        val channelSetHash = channelIds.sorted().joinToString("\n").sha256Sum()
+        val refreshTimestampKey =
+            "${PreferenceKeys.LAST_LOCAL_FEED_REFRESH_TIMESTAMP_MILLIS}_$channelSetHash"
+        var lastRefreshMillis = PreferenceHelper.getLong(refreshTimestampKey, 0)
+        // Preserve the existing local feed's freshness on the first load after upgrading.
+        if (UserDataRepositoryHelper.syncServerType == SyncServerType.NONE) {
+            val previousRefreshMillis = PreferenceHelper.getLong(
+                PreferenceKeys.LAST_LOCAL_FEED_REFRESH_TIMESTAMP_MILLIS, 0
+            )
+            if (previousRefreshMillis != 0L) {
+                if (lastRefreshMillis == 0L) {
+                    lastRefreshMillis = previousRefreshMillis
+                    PreferenceHelper.putLong(refreshTimestampKey, previousRefreshMillis)
+                }
+                PreferenceHelper.remove(PreferenceKeys.LAST_LOCAL_FEED_REFRESH_TIMESTAMP_MILLIS)
+            }
+        }
 
         if (!forceRefresh) {
             val feed = getCachedFeed(channelIdSet)
-            val lastRefreshMillis =
-                PreferenceHelper.getLong(PreferenceKeys.LAST_LOCAL_FEED_REFRESH_TIMESTAMP_MILLIS, 0)
             val durationSinceLastRefresh = nowMillis - lastRefreshMillis
 
             // only refresh if feed is empty or last refresh was more than a day ago
@@ -74,7 +91,7 @@ class LocalFeedRepository : FeedRepository {
 
         DatabaseHolder.Database.feedDao().cleanUpOlderThan(minimumDateMillis)
         refreshFeed(channelIds, minimumDateMillis, onProgressUpdate)
-        PreferenceHelper.putLong(PreferenceKeys.LAST_LOCAL_FEED_REFRESH_TIMESTAMP_MILLIS, nowMillis)
+        PreferenceHelper.putLong(refreshTimestampKey, nowMillis)
 
         return getCachedFeed(channelIdSet)
             .map(SubscriptionsFeedItem::toStreamItem)
