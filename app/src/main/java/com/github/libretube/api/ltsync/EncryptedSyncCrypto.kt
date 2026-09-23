@@ -131,6 +131,7 @@ internal class EncryptedSyncCrypto private constructor(
         private val envelopeJson = Json(JsonHelper.json) { encodeDefaults = true }
 
         private fun parseEnvelope(payload: String): Envelope {
+            require(payload.length <= MAX_CIPHERTEXT_CHARS + 1024) { "Sync payload is too large" }
             val value = JsonHelper.json.decodeFromString<Envelope>(payload)
             require(value.version == 1 && value.kdf.name == "PBKDF2" &&
                 value.kdf.hash == "SHA-256" && value.kdf.iterations == ITERATIONS &&
