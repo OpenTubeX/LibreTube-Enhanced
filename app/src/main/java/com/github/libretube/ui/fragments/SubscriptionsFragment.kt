@@ -213,6 +213,7 @@ class SubscriptionsFragment : DynamicLayoutManagerFragment(R.layout.fragment_sub
         if (viewModel.displayedSourceRevision == sourceRevision) return false
 
         viewModel.displayedSourceRevision = sourceRevision
+        selectedFilterGroup = -1
         viewModel.videoFeed.value = null
         viewModel.subscriptions.value = null
         viewModel.groups.value = null

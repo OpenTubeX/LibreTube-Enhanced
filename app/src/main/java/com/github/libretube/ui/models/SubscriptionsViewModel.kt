@@ -22,6 +22,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.coroutines.cancellation.CancellationException
 
 class SubscriptionsViewModel : ViewModel() {
     private val sourceRevision = AtomicInteger()
@@ -69,9 +70,16 @@ class SubscriptionsViewModel : ViewModel() {
                 SubscriptionHelper.getFeed(forceRefresh = forceRefresh) { feedProgress ->
                     this@SubscriptionsViewModel.feedProgress.postValue(feedProgress)
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                context.toastFromMainDispatcher(R.string.server_error)
                 Log.e(TAG(), e.toString())
+                withContext(Dispatchers.Main) {
+                    if (sourceRevision == currentSourceRevision) {
+                        context.toastFromMainDispatcher(R.string.server_error)
+                        this@SubscriptionsViewModel.videoFeed.value = emptyList()
+                    }
+                }
                 return@launch
             }
             withContext(Dispatchers.Main) {
@@ -90,9 +98,16 @@ class SubscriptionsViewModel : ViewModel() {
             if (sourceRevision != currentSourceRevision) return@launch
             val subscriptions = try {
                 SubscriptionHelper.getSubscriptions()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                context.toastFromMainDispatcher(R.string.server_error)
                 Log.e(TAG(), e.toString())
+                withContext(Dispatchers.Main) {
+                    if (sourceRevision == currentSourceRevision) {
+                        context.toastFromMainDispatcher(R.string.server_error)
+                        this@SubscriptionsViewModel.subscriptions.value = emptyList()
+                    }
+                }
                 return@launch
             }
             withContext(Dispatchers.Main) {

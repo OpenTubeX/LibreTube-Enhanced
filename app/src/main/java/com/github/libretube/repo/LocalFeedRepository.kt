@@ -53,7 +53,10 @@ class LocalFeedRepository : FeedRepository {
         val minimumDateMillis = nowMillis - Duration.ofDays(MAX_FEED_AGE_DAYS).toMillis()
 
         val channelIds = SubscriptionHelper.getSubscriptionChannelIds()
-        if (channelIds.isEmpty()) return emptyList()
+        if (channelIds.isEmpty()) {
+            DatabaseHolder.Database.feedDao().cleanUpOlderThan(minimumDateMillis)
+            return emptyList()
+        }
         // Keep other sources' cached videos for when the user switches back.
         val channelIdSet = channelIds.toHashSet()
 
