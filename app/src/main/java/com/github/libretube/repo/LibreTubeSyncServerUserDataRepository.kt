@@ -90,44 +90,50 @@ class LibreTubeSyncServerUserDataRepository : UserDataRepository {
     }
 
     override suspend fun prepareSync(token: String, password: String, privacyPassphrase: String) {
-        val api = RetrofitInstance.buildRetrofitInstance<LibreTubeSyncServerApi>(
-            baseUrl,
-            headersAccessor = { mapOf("Authorization" to token) }
-        )
-        val encrypted = supportsEncryptedSync(api)
-        validatePrivacyPassphrase(password, privacyPassphrase, encrypted)
-        if (!encrypted) {
-            PreferenceHelper.setSyncPrivacy("", "")
-            return
-        }
-        val manifest = api.getEncryptedSyncManifest()
-        var payload: String? = null
-        for (entry in manifest.collections) {
-            payload = api.getEncryptedSyncCollection(entry.collection).payload
-            if (payload != null) break
-        }
-        if (payload == null && manifest.legacyEncryptedData) {
-            payload = api.getLegacyEncryptedSync().payload
-        }
-        var crypto = EncryptedSyncCrypto.fromPassphrase(privacyPassphrase, payload)
-        if (payload == null) {
-            try {
-                // Establish one shared salt before another device signs in.
-                api.putEncryptedSyncCollection(
-                    "settings", PutEncryptedSyncCollection(0, crypto.encrypt(JsonArray(emptyList())))
-                )
-            } catch (error: HttpException) {
-                if (error.code() != 409) throw error
-                val winner = api.getEncryptedSyncCollection("settings").payload
-                    ?: throw IllegalStateException("Encrypted sync was initialized on another device; try again")
-                crypto = EncryptedSyncCrypto.fromPassphrase(privacyPassphrase, winner)
+        val localSpeeds = PlayerHelper.beginChannelSpeedSync()
+        try {
+            val api = RetrofitInstance.buildRetrofitInstance<LibreTubeSyncServerApi>(
+                baseUrl,
+                headersAccessor = { mapOf("Authorization" to token) }
+            )
+            val encrypted = supportsEncryptedSync(api)
+            validatePrivacyPassphrase(password, privacyPassphrase, encrypted)
+            if (!encrypted) {
+                PreferenceHelper.setSyncPrivacy("", "")
+                PlayerHelper.cancelChannelSpeedSync()
+                return
             }
+            val manifest = api.getEncryptedSyncManifest()
+            var payload: String? = null
+            for (entry in manifest.collections) {
+                payload = api.getEncryptedSyncCollection(entry.collection).payload
+                if (payload != null) break
+            }
+            if (payload == null && manifest.legacyEncryptedData) {
+                payload = api.getLegacyEncryptedSync().payload
+            }
+            var crypto = EncryptedSyncCrypto.fromPassphrase(privacyPassphrase, payload)
+            if (payload == null) {
+                try {
+                    // Establish one shared salt before another device signs in.
+                    api.putEncryptedSyncCollection(
+                        "settings", PutEncryptedSyncCollection(0, crypto.encrypt(JsonArray(emptyList())))
+                    )
+                } catch (error: HttpException) {
+                    if (error.code() != 409) throw error
+                    val winner = api.getEncryptedSyncCollection("settings").payload
+                        ?: throw IllegalStateException("Encrypted sync was initialized on another device; try again")
+                    crypto = EncryptedSyncCrypto.fromPassphrase(privacyPassphrase, winner)
+                }
+            }
+            EncryptedSyncServerUserDataRepository(api, crypto).migrateLegacyData()
+            val speeds = ChannelPlaybackSpeedSettingsSync(api, crypto).syncOnLogin(localSpeeds)
+            PlayerHelper.applySyncedChannelSpeeds(speeds)
+            PreferenceHelper.setSyncPrivacy(crypto.key, crypto.salt)
+        } catch (error: Exception) {
+            PlayerHelper.cancelChannelSpeedSync()
+            throw error
         }
-        EncryptedSyncServerUserDataRepository(api, crypto).migrateLegacyData()
-        val speeds = ChannelPlaybackSpeedSettingsSync(api, crypto)
-            .syncOnLogin(PlayerHelper.getAllSavedChannelSpeeds())
-        PlayerHelper.replaceAllSavedChannelSpeeds(speeds)
-        PreferenceHelper.setSyncPrivacy(crypto.key, crypto.salt)
     }
 
     override suspend fun deleteAccount(password: String) {

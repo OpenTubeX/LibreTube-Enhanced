@@ -237,6 +237,48 @@ class EncryptedSyncMigrationTest {
     }
 
     @Test
+    fun malformedChannelSpeedSettingDoesNotBlockLoginOrOverwriteSettings() = runBlocking {
+        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
+        val crypto = EncryptedSyncCrypto.fromPassphrase("privacy-passphrase-123", null)
+        var payload = ""
+        var puts = 0
+        server.createContext("/v1/encrypted_sync/settings") { exchange ->
+            if (exchange.requestMethod == "PUT") puts++
+            val body = """{"collection":"settings","revision":1,"payload":${JsonHelper.json.encodeToString(payload)}}"""
+            val bytes = body.toByteArray()
+            exchange.responseHeaders.add("Content-Type", "application/json")
+            exchange.sendResponseHeaders(200, bytes.size.toLong())
+            exchange.responseBody.use { it.write(bytes) }
+        }
+        server.start()
+        try {
+            val api = Retrofit.Builder()
+                .baseUrl("http://127.0.0.1:${server.address.port}/")
+                .addConverterFactory(JsonHelper.json.asConverterFactory("application/json".toMediaType()))
+                .build()
+                .create<LibreTubeSyncServerApi>()
+            val sync = ChannelPlaybackSpeedSettingsSync(api, crypto)
+            val local = mapOf("UC123" to 1.5f)
+            val malformed = listOf(
+                """{"key":"channelPlaybackSpeeds"}""",
+                """{"key":"channelPlaybackSpeeds","value":"not-json"}""",
+                """{"key":"channelPlaybackSpeeds","value":"{\"UC123\":{}}"}"""
+            )
+            for (entry in malformed) {
+                payload = crypto.encrypt(JsonHelper.json.parseToJsonElement("""[$entry]"""))
+                val original = payload
+
+                assertEquals(local, sync.syncOnLogin(local))
+                assertTrue(runCatching { sync.update("UC456", 2f) }.isFailure)
+                assertEquals(original, payload)
+            }
+            assertEquals(0, puts)
+        } finally {
+            server.stop(0)
+        }
+    }
+
+    @Test
     fun retriesAConflictingUpdateWithoutDroppingAnotherDeviceSubscription() = runBlocking {
         val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
         val crypto = EncryptedSyncCrypto.fromPassphrase("privacy-passphrase-123", null)

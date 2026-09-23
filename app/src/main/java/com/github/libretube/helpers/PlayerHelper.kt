@@ -71,24 +71,48 @@ import kotlin.time.Clock
 
 object PlayerHelper {
     private const val CHANNEL_SPEED_PREFIX = "channel_speed_"
+    private val channelSpeedLock = Any()
     private val pendingChannelSpeeds = mutableMapOf<String, Pair<String, Float?>>()
+    private var loginSpeedEdits: MutableMap<String, Float?>? = null
     private val channelSpeedWake = Channel<Unit>(Channel.CONFLATED)
     private val channelSpeedScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     init {
         channelSpeedScope.launch {
+            var retryDelay = 1_000L
             for (signal in channelSpeedWake) {
                 delay(400)
                 val updates = synchronized(pendingChannelSpeeds) {
-                    pendingChannelSpeeds.toMap().also { pendingChannelSpeeds.clear() }
+                    pendingChannelSpeeds.toMap()
                 }
+                var retry = false
                 for ((channelId, update) in updates) {
-                    if (!canSyncChannelSpeeds() || PreferenceHelper.getToken() != update.first) continue
+                    if (synchronized(channelSpeedLock) { loginSpeedEdits != null }) {
+                        retry = true
+                        break
+                    }
+                    if (!canSyncChannelSpeeds() || PreferenceHelper.getToken() != update.first) {
+                        synchronized(pendingChannelSpeeds) {
+                            if (pendingChannelSpeeds[channelId] == update) pendingChannelSpeeds.remove(channelId)
+                        }
+                        continue
+                    }
                     try {
                         EncryptedSyncServerUserDataRepository().updateChannelPlaybackSpeed(channelId, update.second)
+                        synchronized(pendingChannelSpeeds) {
+                            if (pendingChannelSpeeds[channelId] == update) pendingChannelSpeeds.remove(channelId)
+                        }
                     } catch (error: Exception) {
                         Log.w("PlayerHelper", "Failed to sync channel playback speed", error)
+                        retry = true
                     }
+                }
+                if (retry) {
+                    delay(retryDelay)
+                    retryDelay = (retryDelay * 2).coerceAtMost(60_000L)
+                    channelSpeedWake.trySend(Unit)
+                } else {
+                    retryDelay = 1_000L
                 }
             }
         }
@@ -105,6 +129,33 @@ object PlayerHelper {
         }
         channelSpeedWake.trySend(Unit)
     }
+
+    fun beginChannelSpeedSync(): Map<String, Float> = synchronized(channelSpeedLock) {
+        loginSpeedEdits = synchronized(pendingChannelSpeeds) {
+            pendingChannelSpeeds.mapValues { it.value.second }.toMutableMap()
+        }
+        getAllSavedChannelSpeeds()
+    }
+
+    fun applySyncedChannelSpeeds(remote: Map<String, Float>) = synchronized(channelSpeedLock) {
+        val merged = remote.toMutableMap()
+        loginSpeedEdits?.forEach { (channelId, speed) ->
+            if (speed == null) merged.remove(channelId) else merged[channelId] = speed
+        }
+        replaceAllSavedChannelSpeeds(merged)
+    }
+
+    fun finishChannelSpeedSync() = synchronized(channelSpeedLock) {
+        val edits = loginSpeedEdits ?: return@synchronized
+        loginSpeedEdits = null
+        edits.forEach { (channelId, speed) -> queueChannelSpeedSync(channelId, speed) }
+    }
+
+    fun cancelChannelSpeedSync() = synchronized(channelSpeedLock) {
+        loginSpeedEdits = null
+        channelSpeedWake.trySend(Unit)
+    }
+
     private const val ACTION_MEDIA_CONTROL = "media_control"
     const val CONTROL_TYPE = "control_type"
     const val SPONSOR_HIGHLIGHT_CATEGORY = "poi_highlight"
@@ -371,23 +422,27 @@ object PlayerHelper {
      */
     fun saveChannelPlaybackSpeed(channelId: String?, speed: Float) {
         if (channelId == null) return
-        
-        val channelSpeedKey = "channel_speed_$channelId"
-        PreferenceHelper.putString(channelSpeedKey, speed.toString())
-        queueChannelSpeedSync(channelId, speed)
+        synchronized(channelSpeedLock) {
+            PreferenceHelper.putString("$CHANNEL_SPEED_PREFIX$channelId", speed.toString())
+            if (loginSpeedEdits != null) {
+                loginSpeedEdits?.set(channelId, speed)
+            } else {
+                queueChannelSpeedSync(channelId, speed)
+            }
+        }
     }
 
     /**
      * Get all saved channel playback speeds
      * @return Map of channelId to speed (Float)
      */
-    fun getAllSavedChannelSpeeds(): Map<String, Float> {
+    fun getAllSavedChannelSpeeds(): Map<String, Float> = synchronized(channelSpeedLock) {
         val allPrefs = PreferenceHelper.settings.all
         val channelSpeeds = mutableMapOf<String, Float>()
         
         for ((key, value) in allPrefs) {
-            if (key.startsWith("channel_speed_")) {
-                val channelId = key.removePrefix("channel_speed_")
+            if (key.startsWith(CHANNEL_SPEED_PREFIX)) {
+                val channelId = key.removePrefix(CHANNEL_SPEED_PREFIX)
                 val speedString = value.toString().replace("F", "")
                 val speed = speedString.toFloatOrNull()
                 if (speed != null) {
@@ -396,10 +451,10 @@ object PlayerHelper {
             }
         }
         
-        return channelSpeeds
+        channelSpeeds
     }
 
-    fun replaceAllSavedChannelSpeeds(speeds: Map<String, Float>) {
+    private fun replaceAllSavedChannelSpeeds(speeds: Map<String, Float>) {
         PreferenceHelper.settings.edit(commit = true) {
             PreferenceHelper.settings.all.keys.filter { it.startsWith(CHANNEL_SPEED_PREFIX) }
                 .forEach { remove(it) }
@@ -413,9 +468,14 @@ object PlayerHelper {
      * Remove saved playback speed for a specific channel
      */
     fun removeChannelPlaybackSpeed(channelId: String) {
-        val channelSpeedKey = "channel_speed_$channelId"
-        PreferenceHelper.remove(channelSpeedKey)
-        queueChannelSpeedSync(channelId, null)
+        synchronized(channelSpeedLock) {
+            PreferenceHelper.remove("$CHANNEL_SPEED_PREFIX$channelId")
+            if (loginSpeedEdits != null) {
+                loginSpeedEdits?.set(channelId, null)
+            } else {
+                queueChannelSpeedSync(channelId, null)
+            }
+        }
     }
 
     val swipeGestureEnabled: Boolean

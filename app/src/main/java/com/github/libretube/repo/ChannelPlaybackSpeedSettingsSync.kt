@@ -10,7 +10,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import retrofit2.HttpException
 
 /** The OpenTubeX channelPlaybackSpeeds setting is a JSON string inside the encrypted settings list. */
@@ -23,8 +22,8 @@ internal class ChannelPlaybackSpeedSettingsSync(
     suspend fun syncOnLogin(local: Map<String, Float>): Map<String, Float> {
         repeat(5) { attempt ->
             val (revision, settings) = readSettings()
-            val remote = settings.find { it.jsonObject["key"]?.jsonPrimitive?.content == settingKey }
-            if (remote != null) return parseSpeeds(remote.jsonObject.getValue("value").jsonPrimitive.content)
+            val remote = settings.find(::isSpeedEntry)
+            if (remote != null) return parseEntry(remote) ?: local
             if (local.isEmpty()) return local
             settings += newEntry(local)
             try {
@@ -40,10 +39,11 @@ internal class ChannelPlaybackSpeedSettingsSync(
     suspend fun update(channelId: String, speed: Float?) {
         repeat(5) { attempt ->
             val (revision, settings) = readSettings()
-            val index = settings.indexOfFirst { it.jsonObject["key"]?.jsonPrimitive?.content == settingKey }
+            val index = settings.indexOfFirst(::isSpeedEntry)
             if (index < 0 && speed == null) return
             val speeds = if (index < 0) mutableMapOf() else
-                parseSpeeds(settings[index].jsonObject.getValue("value").jsonPrimitive.content).toMutableMap()
+                (parseEntry(settings[index])
+                    ?: throw IllegalStateException("Invalid channelPlaybackSpeeds setting")).toMutableMap()
             if (speeds[channelId] == speed || (speed == null && channelId !in speeds)) return
             if (speed == null) speeds.remove(channelId) else speeds[channelId] = speed
             if (index < 0) settings += newEntry(speeds) else {
@@ -85,9 +85,21 @@ internal class ChannelPlaybackSpeedSettingsSync(
     private fun encodeSpeeds(speeds: Map<String, Float>) =
         JsonObject(speeds.mapValues { JsonPrimitive(it.value) }).toString()
 
-    private fun parseSpeeds(value: String): Map<String, Float> =
-        Json.parseToJsonElement(value).jsonObject.mapNotNull { (channelId, speed) ->
-            speed.jsonPrimitive.content.toFloatOrNull()?.takeIf { it.isFinite() && it > 0f }
-                ?.let { channelId to it }
-        }.toMap()
+    private fun isSpeedEntry(entry: JsonElement): Boolean =
+        ((entry as? JsonObject)?.get("key") as? JsonPrimitive)?.content == settingKey
+
+    private fun parseEntry(entry: JsonElement): Map<String, Float>? = runCatching {
+        val value = ((entry as? JsonObject)?.get("value") as? JsonPrimitive)
+            ?.takeIf { it.isString }?.content ?: return@runCatching null
+        val speeds = Json.parseToJsonElement(value) as? JsonObject ?: return@runCatching null
+        val result = mutableMapOf<String, Float>()
+        for ((channelId, speed) in speeds) {
+            val primitive = speed as? JsonPrimitive ?: return@runCatching null
+            val number = primitive.content.toFloatOrNull()
+                ?.takeIf { !primitive.isString && it.isFinite() && it > 0f }
+                ?: return@runCatching null
+            result[channelId] = number
+        }
+        result
+    }.getOrNull()
 }
