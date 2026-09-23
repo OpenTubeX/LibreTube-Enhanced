@@ -31,10 +31,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.decodeFromJsonElement
-import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 import retrofit2.HttpException
 import java.util.UUID
@@ -51,7 +48,6 @@ class EncryptedSyncServerUserDataRepository internal constructor(
         PreferenceHelper.getSyncPrivacyKey(), PreferenceHelper.getSyncPrivacySalt()
     )
     private val account = LibreTubeSyncServerUserDataRepository()
-    private val syncJson = Json(JsonHelper.json) { encodeDefaults = true }
 
     internal suspend fun migrateLegacyData() {
         val manifest = api.getEncryptedSyncManifest()
@@ -100,8 +96,7 @@ class EncryptedSyncServerUserDataRepository internal constructor(
         val response = api.getEncryptedSyncCollection(name)
         val payload = response.payload
         if (payload != null) {
-            val data = crypto.decrypt(payload)
-            return response.revision to JsonHelper.json.decodeFromJsonElement(ListSerializer(serializer), data)
+            return response.revision to crypto.decryptCollection(payload, ListSerializer(serializer))
         }
         val manifest = api.getEncryptedSyncManifest()
         if (manifest.legacyEncryptedData) {
@@ -129,12 +124,11 @@ class EncryptedSyncServerUserDataRepository internal constructor(
             val (revision, current) = decode(name, serializer, legacy)
             val next = current.toMutableList()
             val result = update(next)
-            val data: JsonElement = syncJson.encodeToJsonElement(
-                ListSerializer(serializer), next
-            )
             try {
                 api.putEncryptedSyncCollection(
-                    name, PutEncryptedSyncCollection(revision, crypto.encrypt(data))
+                    name, PutEncryptedSyncCollection(
+                        revision, crypto.encryptCollection(next, ListSerializer(serializer))
+                    )
                 )
                 return@withLock result
             } catch (error: HttpException) {

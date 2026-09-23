@@ -1,9 +1,10 @@
 package com.github.libretube.api.ltsync
 
 import com.github.libretube.api.JsonHelper
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.io.ByteArrayInputStream
@@ -47,9 +48,30 @@ internal class EncryptedSyncCrypto private constructor(
         val ciphertext: String
     )
 
+    @Serializable
+    private data class CollectionDocument<T>(val version: Int, val data: T)
+
     private val keyBytes = Base64.getDecoder().decode(key).also { require(it.size == 32) }
 
+    /** Avoid building a second JSON object tree for large sync collections. */
+    fun <T> decryptCollection(payload: String, serializer: KSerializer<T>): T {
+        val document = JsonHelper.json.decodeFromString(
+            CollectionDocument.serializer(serializer),
+            decryptDocumentBytes(payload).toString(Charsets.UTF_8)
+        )
+        require(document.version == 1) { "Unsupported sync document" }
+        return document.data
+    }
+
     fun decrypt(payload: String): JsonElement {
+        val document = JsonHelper.json.parseToJsonElement(
+            decryptDocumentBytes(payload).toString(Charsets.UTF_8)
+        ).jsonObject
+        require(document["version"]?.jsonPrimitive?.content == "1") { "Unsupported sync document" }
+        return document["data"] ?: document // Older OpenTubeX single-document sync.
+    }
+
+    private fun decryptDocumentBytes(payload: String): ByteArray {
         val envelope = parseEnvelope(payload)
         require(envelope.kdf.salt == salt) { "Encrypted sync salt changed" }
         val iv = Base64.getDecoder().decode(envelope.cipher.iv)
@@ -86,13 +108,22 @@ internal class EncryptedSyncCrypto private constructor(
             padded
         }
         require(documentBytes.size <= MAX_DOCUMENT_BYTES) { "Sync document is too large" }
-        val document = JsonHelper.json.parseToJsonElement(documentBytes.toString(Charsets.UTF_8)).jsonObject
-        require(document["version"]?.jsonPrimitive?.content == "1") { "Unsupported sync document" }
-        return document["data"] ?: document // Older OpenTubeX single-document sync.
+        return documentBytes
     }
 
     fun encrypt(data: JsonElement): String {
         val document = "{\"version\":1,\"data\":${data}}".toByteArray(Charsets.UTF_8)
+        return encryptDocument(document)
+    }
+
+    fun <T> encryptCollection(data: T, serializer: KSerializer<T>): String {
+        val document = envelopeJson.encodeToString(
+            CollectionDocument.serializer(serializer), CollectionDocument(1, data)
+        ).toByteArray(Charsets.UTF_8)
+        return encryptDocument(document)
+    }
+
+    private fun encryptDocument(document: ByteArray): String {
         require(document.size <= MAX_DOCUMENT_BYTES) { "Sync document is too large" }
         val compressed = ByteArrayOutputStream().use { output ->
             GZIPOutputStream(output).use { it.write(document) }

@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private sealed class WatchHistoryPage {
     object First : WatchHistoryPage()
@@ -63,13 +64,17 @@ class WatchHistoryModel : ViewModel() {
         if (fetchJob?.isActive == true) return
 
         fetchJob = viewModelScope.launch {
-            val (watchHistoryItems, nextCursor) = UserDataRepositoryHelper.userDataRepository.getWatchHistory(
-                pageSize = HISTORY_PAGE_SIZE,
-                watchedState = selectedStatus.value,
-                cursor = (nextHistoryPage as? WatchHistoryPage.HasNext)?.nextCursor
-            )
-            val downloaded = DatabaseHolder.Database.downloadDao()
-                .areVideosDownloaded(watchHistoryItems.map { it.video.url!!.toID() })
+            val (watchHistoryItems, nextCursor) = withContext(Dispatchers.IO) {
+                UserDataRepositoryHelper.userDataRepository.getWatchHistory(
+                    pageSize = HISTORY_PAGE_SIZE,
+                    watchedState = selectedStatus.value,
+                    cursor = (nextHistoryPage as? WatchHistoryPage.HasNext)?.nextCursor
+                )
+            }
+            val downloaded = withContext(Dispatchers.IO) {
+                DatabaseHolder.Database.downloadDao()
+                    .areVideosDownloaded(watchHistoryItems.map { it.video.url!!.toID() })
+            }
 
             watchHistoryItems.forEachIndexed { index, item ->
                 val videoId = item.video.url!!.toID()
