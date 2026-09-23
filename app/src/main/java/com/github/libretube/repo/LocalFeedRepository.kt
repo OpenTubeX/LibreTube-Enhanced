@@ -1,7 +1,6 @@
 package com.github.libretube.repo
 
 import android.util.Log
-import com.github.libretube.api.SubscriptionHelper
 import com.github.libretube.api.obj.StreamItem
 import com.github.libretube.api.obj.Subscription
 import com.github.libretube.api.toStreamItem
@@ -29,7 +28,10 @@ import java.time.Duration
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
 
-class LocalFeedRepository : FeedRepository {
+class LocalFeedRepository(
+    private val userDataRepository: UserDataRepository,
+    private val syncServerType: SyncServerType
+) : FeedRepository {
     private val relevantTabs =
         listOf(
             ContentFilter.LIVESTREAMS to ChannelTabs.LIVESTREAMS,
@@ -43,10 +45,6 @@ class LocalFeedRepository : FeedRepository {
         DatabaseHolder.Database.feedDao().update(feedItem)
     }
 
-    override suspend fun removeChannel(channelId: String) {
-        DatabaseHolder.Database.feedDao().delete(channelId)
-    }
-
     override suspend fun getFeed(
         forceRefresh: Boolean,
         onProgressUpdate: (FeedProgress) -> Unit
@@ -54,7 +52,7 @@ class LocalFeedRepository : FeedRepository {
         val nowMillis = Instant.now().toEpochMilli()
         val minimumDateMillis = nowMillis - Duration.ofDays(MAX_FEED_AGE_DAYS).toMillis()
 
-        val channelIds = SubscriptionHelper.getSubscriptionChannelIds()
+        val channelIds = userDataRepository.getSubscriptionChannelIds()
         if (channelIds.isEmpty()) {
             DatabaseHolder.Database.feedDao().cleanUpOlderThan(minimumDateMillis)
             return emptyList()
@@ -62,7 +60,7 @@ class LocalFeedRepository : FeedRepository {
         // Keep other sources' cached videos for when the user switches back.
         val channelIdSet = channelIds.toHashSet()
         // Preserve the local cache's freshness after upgrades; scope sync caches to their channels.
-        val refreshTimestampKey = if (UserDataRepositoryHelper.syncServerType == SyncServerType.NONE) {
+        val refreshTimestampKey = if (syncServerType == SyncServerType.NONE) {
             PreferenceKeys.LAST_LOCAL_FEED_REFRESH_TIMESTAMP_MILLIS
         } else {
             val channelSetHash = channelIds.sorted().joinToString("\n").sha256Sum()
@@ -82,7 +80,9 @@ class LocalFeedRepository : FeedRepository {
 
         DatabaseHolder.Database.feedDao().cleanUpOlderThan(minimumDateMillis)
         refreshFeed(channelIds, minimumDateMillis, onProgressUpdate)
-        PreferenceHelper.putLong(refreshTimestampKey, nowMillis)
+        if (syncServerType == UserDataRepositoryHelper.syncServerType) {
+            PreferenceHelper.putLong(refreshTimestampKey, nowMillis)
+        }
 
         return getCachedFeed(channelIdSet)
             .map(SubscriptionsFeedItem::toStreamItem)
@@ -130,7 +130,7 @@ class LocalFeedRepository : FeedRepository {
             }.filterNotNull().unzip()
 
             // update subscriptions channels in case they've changed (e.g. different avatar or name)
-            SubscriptionHelper.submitSubscriptionChannelInfosChanged(channels.filterNotNull())
+            userDataRepository.submitSubscriptionChannelInfosChanged(channels.filterNotNull())
             DatabaseHolder.Database.feedDao()
                 .insertAll(collectedFeedItems.flatten().map(StreamItem::toFeedItem))
         }

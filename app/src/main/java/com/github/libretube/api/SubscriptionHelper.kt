@@ -19,11 +19,7 @@ object SubscriptionHelper {
         channelId: String, name: String, uploaderAvatar: String?, verified: Boolean
     ) = userDataRepository.subscribe(channelId, name, uploaderAvatar, verified)
 
-    suspend fun unsubscribe(channelId: String) {
-        userDataRepository.unsubscribe(channelId)
-        // remove videos from (local) feed
-        feedRepository.removeChannel(channelId)
-    }
+    suspend fun unsubscribe(channelId: String) = userDataRepository.unsubscribe(channelId)
     suspend fun isSubscribed(channelId: String) = userDataRepository.isSubscribed(channelId)
     suspend fun importSubscriptions(newChannels: List<String>) =
         userDataRepository.importSubscriptions(newChannels)

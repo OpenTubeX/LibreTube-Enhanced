@@ -13,6 +13,5 @@ interface FeedRepository {
         forceRefresh: Boolean,
         onProgressUpdate: (FeedProgress) -> Unit
     ): List<StreamItem>
-    suspend fun removeChannel(channelId: String) {}
     suspend fun submitFeedItemChange(feedItem: SubscriptionsFeedItem) {}
 }
