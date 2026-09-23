@@ -101,6 +101,8 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment(R.layout.fragment_watc
                     selected[index] = newValue
                 }
                 .setPositiveButton(R.string.okay) { _, _ ->
+                    pageErrorSnackbar?.dismiss()
+                    pageErrorSnackbar = null
                     viewModel.cancelPendingHistoryPage()
                     binding.watchHistoryRecView.isGone = true
                     binding.historyEmpty.isVisible = true
