@@ -124,6 +124,9 @@ internal class EncryptedSyncCrypto private constructor(
         private const val ITERATIONS = 600_000
         private const val BLOCK_BYTES = 64 * 1024
         private const val MAX_DOCUMENT_BYTES = 64 * 1024 * 1024
+        // Allow gzip overhead, block padding, and the AES-GCM tag above the document limit.
+        private const val MAX_CIPHERTEXT_BYTES = MAX_DOCUMENT_BYTES + 2 * BLOCK_BYTES + 16
+        private const val MAX_CIPHERTEXT_CHARS = ((MAX_CIPHERTEXT_BYTES + 2) / 3) * 4
         private val ADDITIONAL_DATA = "OpenTubeX encrypted sync v1".toByteArray(Charsets.UTF_8)
         private val envelopeJson = Json(JsonHelper.json) { encodeDefaults = true }
 
@@ -135,9 +138,11 @@ internal class EncryptedSyncCrypto private constructor(
                 (value.compression == null || value.compression.name == "gzip")) {
                 "Unsupported encrypted sync format"
             }
-            require(Base64.getDecoder().decode(value.kdf.salt).size == 16) {
+            require(value.kdf.salt.length == 24 && Base64.getDecoder().decode(value.kdf.salt).size == 16) {
                 "Invalid encrypted sync salt"
             }
+            require(value.cipher.iv.length == 16) { "Invalid encrypted sync nonce" }
+            require(value.ciphertext.length <= MAX_CIPHERTEXT_CHARS) { "Sync document is too large" }
             return value
         }
 
