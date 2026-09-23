@@ -29,6 +29,7 @@ import com.github.libretube.db.obj.SubscriptionGroup
 import com.github.libretube.enums.WatchHistoryStatus
 import com.github.libretube.extensions.toID
 import com.github.libretube.helpers.PreferenceHelper
+import com.github.libretube.helpers.PlayerHelper
 import kotlinx.serialization.json.JsonArray
 import retrofit2.HttpException
 
@@ -123,6 +124,9 @@ class LibreTubeSyncServerUserDataRepository : UserDataRepository {
             }
         }
         EncryptedSyncServerUserDataRepository(api, crypto).migrateLegacyData()
+        val speeds = ChannelPlaybackSpeedSettingsSync(api, crypto)
+            .syncOnLogin(PlayerHelper.getAllSavedChannelSpeeds())
+        PlayerHelper.replaceAllSavedChannelSpeeds(speeds)
         PreferenceHelper.setSyncPrivacy(crypto.key, crypto.salt)
     }
 

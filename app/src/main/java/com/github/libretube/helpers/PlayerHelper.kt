@@ -15,6 +15,7 @@ import androidx.annotation.OptIn
 import androidx.annotation.StringRes
 import androidx.core.app.PendingIntentCompat
 import androidx.core.app.RemoteActionCompat
+import androidx.core.content.edit
 import androidx.core.content.getSystemService
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.drawable.IconCompat
@@ -47,16 +48,21 @@ import com.github.libretube.api.obj.Subtitle
 import com.github.libretube.api.obj.WatchHistoryEntryMetadata
 import com.github.libretube.constants.PreferenceKeys
 import com.github.libretube.db.DatabaseHelper
-import com.github.libretube.enums.PlayerEvent
 import com.github.libretube.enums.SbSkipOptions
+import com.github.libretube.enums.PlayerEvent
+import com.github.libretube.enums.SyncServerType
 import com.github.libretube.extensions.TAG
 import com.github.libretube.extensions.seekBy
 import com.github.libretube.extensions.togglePlayPauseState
 import com.github.libretube.obj.VideoStats
+import com.github.libretube.repo.EncryptedSyncServerUserDataRepository
 import com.github.libretube.repo.UserDataRepositoryHelper
 import com.github.libretube.util.TextUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
 import kotlin.math.max
@@ -64,6 +70,41 @@ import kotlin.math.roundToInt
 import kotlin.time.Clock
 
 object PlayerHelper {
+    private const val CHANNEL_SPEED_PREFIX = "channel_speed_"
+    private val pendingChannelSpeeds = mutableMapOf<String, Pair<String, Float?>>()
+    private val channelSpeedWake = Channel<Unit>(Channel.CONFLATED)
+    private val channelSpeedScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    init {
+        channelSpeedScope.launch {
+            for (signal in channelSpeedWake) {
+                delay(400)
+                val updates = synchronized(pendingChannelSpeeds) {
+                    pendingChannelSpeeds.toMap().also { pendingChannelSpeeds.clear() }
+                }
+                for ((channelId, update) in updates) {
+                    if (!canSyncChannelSpeeds() || PreferenceHelper.getToken() != update.first) continue
+                    try {
+                        EncryptedSyncServerUserDataRepository().updateChannelPlaybackSpeed(channelId, update.second)
+                    } catch (error: Exception) {
+                        Log.w("PlayerHelper", "Failed to sync channel playback speed", error)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun canSyncChannelSpeeds() =
+        UserDataRepositoryHelper.syncServerType == SyncServerType.LIBRETUBE &&
+            PreferenceHelper.getToken().isNotEmpty() && PreferenceHelper.getSyncPrivacySalt().isNotEmpty()
+
+    private fun queueChannelSpeedSync(channelId: String, speed: Float?) {
+        if (!canSyncChannelSpeeds()) return
+        synchronized(pendingChannelSpeeds) {
+            pendingChannelSpeeds[channelId] = PreferenceHelper.getToken() to speed
+        }
+        channelSpeedWake.trySend(Unit)
+    }
     private const val ACTION_MEDIA_CONTROL = "media_control"
     const val CONTROL_TYPE = "control_type"
     const val SPONSOR_HIGHLIGHT_CATEGORY = "poi_highlight"
@@ -333,6 +374,7 @@ object PlayerHelper {
         
         val channelSpeedKey = "channel_speed_$channelId"
         PreferenceHelper.putString(channelSpeedKey, speed.toString())
+        queueChannelSpeedSync(channelId, speed)
     }
 
     /**
@@ -357,12 +399,23 @@ object PlayerHelper {
         return channelSpeeds
     }
 
+    fun replaceAllSavedChannelSpeeds(speeds: Map<String, Float>) {
+        PreferenceHelper.settings.edit(commit = true) {
+            PreferenceHelper.settings.all.keys.filter { it.startsWith(CHANNEL_SPEED_PREFIX) }
+                .forEach { remove(it) }
+            speeds.forEach { (channelId, speed) ->
+                putString("$CHANNEL_SPEED_PREFIX$channelId", speed.toString())
+            }
+        }
+    }
+
     /**
      * Remove saved playback speed for a specific channel
      */
     fun removeChannelPlaybackSpeed(channelId: String) {
         val channelSpeedKey = "channel_speed_$channelId"
         PreferenceHelper.remove(channelSpeedKey)
+        queueChannelSpeedSync(channelId, null)
     }
 
     val swipeGestureEnabled: Boolean
