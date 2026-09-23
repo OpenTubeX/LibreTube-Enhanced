@@ -330,9 +330,16 @@ class EncryptedSyncServerUserDataRepository internal constructor(
         metadata = WatchHistoryEntryMetadata(
             videoId = video.id, addedDate = metadata.addedDate,
             finished = metadata.watchedState == WatchedState.Completed,
-            positionMillis = metadata.positionMillis?.toLong()
+            positionMillis = metadata.positionMillis
         ),
         video = video.toStreamItem()
+    )
+
+    private fun WatchHistoryEntryMetadata.toSyncItem(addedDate: Long = this.addedDate) = WatchHistoryItem(
+        addedDate = addedDate,
+        watchedState = if (finished) WatchedState.Completed else WatchedState.Watching,
+        // Completed state carries the watched flag; the local sentinel is not a usable sync position.
+        positionMillis = positionMillis?.let { if (it == Long.MAX_VALUE) 0L else it }
     )
 
     override suspend fun getWatchHistory(
@@ -361,11 +368,7 @@ class EncryptedSyncServerUserDataRepository internal constructor(
         change("history", ExtendedWatchHistoryItem.serializer(), ::legacyHistory) { history ->
             history.removeAll { it.video.id == watchHistoryEntry.metadata.videoId }
             history += ExtendedWatchHistoryItem(
-                WatchHistoryItem(
-                    addedDate = watchHistoryEntry.metadata.addedDate,
-                    watchedState = if (watchHistoryEntry.metadata.finished) WatchedState.Completed else WatchedState.Watching,
-                    positionMillis = watchHistoryEntry.metadata.positionMillis?.toInt()
-                ),
+                watchHistoryEntry.metadata.toSyncItem(),
                 watchHistoryEntry.video.toCreateVideo()
             )
         }
@@ -375,11 +378,7 @@ class EncryptedSyncServerUserDataRepository internal constructor(
         change("history", ExtendedWatchHistoryItem.serializer(), ::legacyHistory) { history ->
             val index = history.indexOfFirst { it.video.id == metadata.videoId }
             if (index >= 0) history[index] = history[index].copy(
-                metadata = WatchHistoryItem(
-                    addedDate = metadata.addedDate,
-                    watchedState = if (metadata.finished) WatchedState.Completed else WatchedState.Watching,
-                    positionMillis = metadata.positionMillis?.toInt()
-                )
+                metadata = metadata.toSyncItem(history[index].metadata.addedDate)
             )
         }
     }

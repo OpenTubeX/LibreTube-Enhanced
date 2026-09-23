@@ -327,7 +327,7 @@ class LibreTubeSyncServerUserDataRepository : UserDataRepository {
             videoId = videoId,
             addedDate = addedDate,
             finished = watchedState == WatchedState.Completed,
-            positionMillis = positionMillis?.toLong()
+            positionMillis = positionMillis
         )
     }
 
@@ -342,7 +342,7 @@ class LibreTubeSyncServerUserDataRepository : UserDataRepository {
         return WatchHistoryItem(
             addedDate = addedDate,
             watchedState = if (finished) WatchedState.Completed else WatchedState.Watching,
-            positionMillis = positionMillis?.toInt()
+            positionMillis = positionMillis?.toInt()?.toLong()
         )
     }
 
