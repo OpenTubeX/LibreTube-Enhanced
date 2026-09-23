@@ -24,7 +24,10 @@ class EncryptedSyncMigrationTest {
         val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
         val crypto = EncryptedSyncCrypto.fromPassphrase("privacy-passphrase-123", null)
         val video = """{"duration":100,"id":"video-1","thumbnail_url":"","title":"Video","upload_date":0,"uploader":{"id":"channel-1","name":"Channel","verified":false}}"""
-        val playlist = """[{"playlist":{"id":"playlist-1","title":"Favorites","description":""},"videos":[$video,${video.replace("video-1", "video-2")}]}]"""
+        val playlist = """[
+            {"playlist":{"id":"playlist-1","title":"Favorites","description":""},"videos":[$video,${video.replace("video-1", "video-2")}]},
+            {"playlist":{"id":"playlist-2","title":"Saved","description":"","video_count":3},"videos":[$video]}
+        ]"""
         val payload = crypto.encrypt(JsonHelper.json.parseToJsonElement(playlist))
         server.createContext("/v1/encrypted_sync/playlists") { exchange ->
             val body = """{"collection":"playlists","revision":1,"payload":${JsonHelper.json.encodeToString(payload)}}"""
@@ -41,9 +44,11 @@ class EncryptedSyncMigrationTest {
                 .build()
                 .create<LibreTubeSyncServerApi>()
 
-            val playlists = EncryptedSyncServerUserDataRepository(api, crypto).getPlaylists()
+            val repository = EncryptedSyncServerUserDataRepository(api, crypto)
 
-            assertEquals(2L, playlists.single().videos)
+            assertEquals(listOf(2L, 3L), repository.getPlaylists().map { it.videos })
+            assertEquals(2, repository.getPlaylist("playlist-1").videos)
+            assertEquals(3, repository.getPlaylist("playlist-2").videos)
         } finally {
             server.stop(0)
         }

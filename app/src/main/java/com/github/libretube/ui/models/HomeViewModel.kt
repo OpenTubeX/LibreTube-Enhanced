@@ -156,10 +156,9 @@ class HomeViewModel : ViewModel() {
             }.getOrElse { Pair(emptyList(), null) }
 
             return videos.filter { entry ->
-                !DatabaseHelper.isVideoWatched(
-                    entry.metadata.positionMillis ?: 0L,
-                    entry.video.duration
-                )
+                entry.metadata.positionMillis?.let { position ->
+                    !DatabaseHelper.isVideoWatched(position, entry.video.duration ?: 0)
+                } ?: true
             }.map { it.video }
         }
 

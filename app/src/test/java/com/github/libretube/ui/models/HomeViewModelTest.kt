@@ -14,7 +14,9 @@ class HomeViewModelTest {
     fun continueWatchingUsesFetchedHistoryWithoutPerVideoRequests() = runBlocking {
         val entries = listOf(
             historyEntry("unwatched", 10_000),
-            historyEntry("watched", 95_000)
+            historyEntry("watched", 95_000),
+            historyEntry("unknown-duration", 10_000, null),
+            historyEntry("no-position", null, null)
         )
         var historyReads = 0
         var individualReads = 0
@@ -37,13 +39,13 @@ class HomeViewModelTest {
 
         val videos = HomeViewModel.loadWatchingFromDB(repository)
 
-        assertEquals(listOf("unwatched"), videos.map { it.url })
+        assertEquals(listOf("unwatched", "no-position"), videos.map { it.url })
         assertEquals(1, historyReads)
         assertEquals(0, individualReads)
     }
 
-    private fun historyEntry(id: String, positionMillis: Long) = WatchHistoryEntry(
+    private fun historyEntry(id: String, positionMillis: Long?, duration: Long? = 100) = WatchHistoryEntry(
         WatchHistoryEntryMetadata(id, 0, false, positionMillis),
-        StreamItem(url = id, duration = 100)
+        StreamItem(url = id, duration = duration)
     )
 }
