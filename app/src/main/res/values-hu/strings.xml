@@ -556,7 +556,6 @@
     <string name="sync_type_summary_libretube">A lejátszási listákat és a feliratkozások adatait a LibreTube szinkronizálókiszolgálóján (%1$s) tárolja. Ez lehetővé teszi, hogy bármely más eszközről bejelentkezzen a fiókjába, és hozzáférjen a feliratkozásaihoz és lejátszási listáihoz. Adatvédelmi nyilatkozat: A felhasználói adatokat kiszolgálói oldalon álnevesítik, de nem végpontok közötti titkosítás alatt állnak. Ha úgy dönt, saját kiszolgálót is üzemeltethet, de általában a hivatalos kiszolgáló is teljesen megfelelő.</string>
     <string name="sync_type_summary_piped">Csak szakértőknek, elavult:\nA lejátszási listák és a feliratkozások adatait tárolja a Piped-en (%1$s). Mivel a Piped-nek már nincsenek nyilvános példányai, saját Piped példányt kell üzemeltetnie.</string>
     <string name="switch_sync_type_warning">Ha korábban más szinkronizálási típust használt, akkor először készítsen biztonsági másolatot a feliratkozásairól és a lejátszási listáiról. Ezután az alkalmazás beállításaiban megváltoztathatja a szinkronizálási típust, majd a biztonsági másolatból újraimportálhatja az adatait.</string>
-    <string name="oidc_login">Folytatás az OIDC-vel</string>
     <string name="already_downloaded">Ez a videó már le lett töltve!</string>
     <string name="export">Exportálás</string>
     <string name="exporting">Exportálás folyamatban…</string>

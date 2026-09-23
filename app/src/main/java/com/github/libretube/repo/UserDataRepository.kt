@@ -31,9 +31,6 @@ interface UserDataRepository {
     suspend fun prepareSync(token: String, password: String, privacyPassphrase: String) = Unit
     suspend fun deleteAccount(password: String) = Unit
 
-    fun getOidcLoginUrl(redirectUrl: String): String? = null
-    fun getOidcDeleteAccountUrl(redirectUrl: String): String? = null
-
     suspend fun subscribe(channelId: String, name: String, uploaderAvatar: String?, verified: Boolean)
     suspend fun unsubscribe(channelId: String)
     // TODO: isSubscribed shouldn't be able to return null?

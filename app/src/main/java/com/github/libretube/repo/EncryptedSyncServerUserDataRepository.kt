@@ -96,8 +96,6 @@ class EncryptedSyncServerUserDataRepository internal constructor(
     override suspend fun prepareSync(token: String, password: String, privacyPassphrase: String) =
         account.prepareSync(token, password, privacyPassphrase)
     override suspend fun deleteAccount(password: String) = account.deleteAccount(password)
-    override fun getOidcLoginUrl(redirectUrl: String) = account.getOidcLoginUrl(redirectUrl)
-    override fun getOidcDeleteAccountUrl(redirectUrl: String) = account.getOidcDeleteAccountUrl(redirectUrl)
 
     private suspend fun <T> read(
         name: String,

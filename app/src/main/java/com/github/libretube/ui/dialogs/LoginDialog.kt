@@ -2,17 +2,14 @@ package com.github.libretube.ui.dialogs
 
 import android.app.Dialog
 import android.content.DialogInterface
-import android.content.Intent
 import android.os.Bundle
 import android.util.Patterns
 import android.widget.Toast
-import androidx.core.net.toUri
 import androidx.core.os.bundleOf
 import androidx.core.view.isVisible
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.setFragmentResult
 import androidx.lifecycle.lifecycleScope
-import com.github.libretube.BuildConfig
 import com.github.libretube.R
 import com.github.libretube.constants.IntentData
 import com.github.libretube.enums.SyncServerType
@@ -31,20 +28,6 @@ class LoginDialog : DialogFragment() {
         val binding = DialogLoginBinding.inflate(layoutInflater)
         binding.privacyPassphraseInput.isVisible =
             UserDataRepositoryHelper.syncServerType == SyncServerType.LIBRETUBE
-
-        @Suppress("DEPRECATION")
-        val oidcAuthUrl =
-            UserDataRepositoryHelper.userDataRepository.getOidcLoginUrl("${BuildConfig.APPLICATION_ID}://login_callback")
-        binding.oidcLogin.isVisible = oidcAuthUrl != null
-
-        binding.oidcLogin.setOnClickListener {
-            val intent = Intent().apply {
-                action = Intent.ACTION_VIEW
-                data = oidcAuthUrl?.toUri()
-            }
-            activity?.startActivity(intent)
-            dismiss()
-        }
 
         return MaterialAlertDialogBuilder(requireContext())
             .setTitle(R.string.login)

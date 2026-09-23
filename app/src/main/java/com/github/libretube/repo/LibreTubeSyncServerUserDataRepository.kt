@@ -118,11 +118,6 @@ class LibreTubeSyncServerUserDataRepository : UserDataRepository {
         }
     }
 
-    override fun getOidcLoginUrl(redirectUrl: String): String =
-        "$baseUrl/v1/account/oidc/authenticate?redirect_url=$redirectUrl"
-    override fun getOidcDeleteAccountUrl(redirectUrl: String): String =
-        "$baseUrl/v1/account/oidc/delete?redirect_url=$redirectUrl"
-
     override suspend fun subscribe(
         channelId: String,
         name: String,

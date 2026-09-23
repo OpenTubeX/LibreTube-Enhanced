@@ -557,7 +557,6 @@
     <string name="sync_type_summary_none">Almacena todos los datos de usuario offline dentro de la app. Esto significa que no puedes sincronizar los datos entre dispositivos, pero puede ser la decisión adecuada si solo usas un dispositivo o no te importa la sincronización entre dispositivos.</string>
     <string name="sync_type_summary_libretube">Almacena los datos de listas de reproducción y suscripciones en el servidor de sincronización de LibreTube (%1$s). Esto te permite iniciar sesión en tu cuenta desde cualquier otro dispositivo y tener acceso a tus suscripciones y listas de reproducción. Aviso de privacidad: Los datos de usuario son pseudoanonimizados del lado de servidor, pero no encriptados de extremo a extremo. Por elección, puedes también hostear tu propia versión del servidor, pero normalmente el servidor oficialmente debería estar bien.</string>
     <string name="sync_type_summary_piped">Solo expertos, deprecado:\nAlmacena los datos de listas de reproducción y suscripciones en Piped (%1$s). Como Piped ya no tiene ninguna instancia publica, tienes que hostear tu propia instancia de Piped.</string>
-    <string name="oidc_login">Continuar con OIDC</string>
     <string name="already_downloaded">¡Ya te has descargado este video!</string>
     <string name="comment_verified">Verificado</string>
     <string name="comment_pinned">Fijado</string>

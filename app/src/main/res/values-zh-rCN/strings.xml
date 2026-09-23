@@ -553,7 +553,6 @@
     <string name="sync_type_summary_libretube">在 LibreTube 的同步服务器（%1$s）上存储播放列表和订阅。这允许你在任何其他设备上登录来访问订阅和播放列表。隐私声明：服务器端对用户数据进行假名化处理，但不是端到端加密。你也可以选择托管自己的服务器版本，但通常官方服务器应该就行了。</string>
     <string name="sync_type_summary_piped">仅专家，已废弃：\n在 Piped 上存储播放列表和订阅数据 (%1$s)。因为 Piped 不再有任何公共实例，你必须托管自己的 Piped 实例。</string>
     <string name="switch_sync_type_warning">如果之前使用了不同的同步类型，请先备份订阅和播放列表。之后你可以在实例设置中切换同步类型并从备份重新导入数据。</string>
-    <string name="oidc_login">继续使用 OIDC 登录</string>
     <string name="already_downloaded">已经下载了这个视频！</string>
     <string name="export">导出</string>
     <string name="exporting">导出中…</string>

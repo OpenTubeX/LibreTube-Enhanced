@@ -555,7 +555,6 @@
     <string name="sync_type_summary_none">Bütün istifadəçi məlumatını tətbiq daxilində oflayn saxla. Bu o deməkdir ki, məlumatı cihazlarınız arasında sinxronlaşdıra bilməyəcəksiniz, lakin yalnız tək cihaz istifadə edirsinizsə və ya cihazlararası sinxronizasiya vacib deyilsə, düzgün seçim ola bilər.</string>
     <string name="sync_type_summary_libretube">Pleylistləri və abunəlik məlumatlarını LibreTube-un sinxronizasiya serverində (%1$s) saxla. Bu, abunəliklərinizə və pleylistlərinizə giriş etmək üçün digər istənilən cihazda hesabınıza daxil olmağa imkan verir. Məxfilik Xəbərdarlığı: İstifadəçi məlumatları server tərəfində anonimləşdirilir, lakin ucdan-uca şifrələnmir. İstəyinizə uyğun olaraq serverin öz versiyasına da ev sahibliyi edə bilərsiniz, lakin adətən rəsmi server tam kifayətdir.</string>
     <string name="sync_type_summary_piped">Yalnız mütəxəssislər üçün (köhnəlmiş):\nPleylist və abunəlik məlumatlarını Piped-də (%1$s) saxla. Piped-in artıq heç bir ictimai instansiyası olmadığı üçün öz Piped instansiyanıza ev sahibliyi etməlisiniz.</string>
-    <string name="oidc_login">OIDC ilə davam et</string>
     <string name="already_downloaded">Bu videonu artıq yükləmisiniz!</string>
     <string name="switch_sync_type_warning">Əgər əvvəllər fərqli sinxronizasiya növün istifadə etmisinizsə, xahiş olunur, əvvəlcə abunəliklərinizin və pleylistlərinizin nüsxəsini çıxarın. Daha sonra instansiya tənzimləmələrində sinxronizasiya növünü dəyişə və məlumatlarınızı nüsxədən yenidən idxal edə bilərsiniz.</string>
     <string name="export">Köçür</string>

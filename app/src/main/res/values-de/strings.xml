@@ -550,7 +550,6 @@
     <string name="sync_server_url">URL zum LibreTube-Synchronisationsserver</string>
     <string name="export">Exportieren</string>
     <string name="missing_auth_falling_back">Nicht angemeldet. Datensynchronisation ausgeschaltet.</string>
-    <string name="oidc_login">Mit OIDC fortfahren</string>
     <string name="welcome">Willkommen bei LibreTube! Um loszulegen, wählen Sie bitte unten einen Synchronisierungsmodus aus, um zu entscheiden, ob Sie Ihre Benutzerdaten geräteübergreifend synchronisieren möchten.</string>
     <string name="choose_instance">Bitte wählen Sie zunächst eine Instanz aus!</string>
     <string name="choose_instance_long">Bitte wählen Sie unten eine Piped-Instanz aus, die Sie verwenden möchten. Die Piped-Instanz fungiert als Vermittler zwischen Ihnen und YouTube. Diese Instanzen befinden sich an verschiedenen physischen Standorten – erkennbar an den jeweiligen Landesflaggen. Instanzen, die physisch näher bei Ihnen liegen, sind wahrscheinlich schneller als solche, die weiter entfernt sind. Sie können die verwendete Instanz jederzeit in den Einstellungen ändern.</string>
