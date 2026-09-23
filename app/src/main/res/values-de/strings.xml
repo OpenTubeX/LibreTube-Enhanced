@@ -11,6 +11,9 @@
     <string name="username">Benutzername</string>
     <string name="password">Passwort</string>
     <string name="login">Anmelden</string>
+    <string name="login_signing_in">Anmeldung läuft…</string>
+    <string name="login_creating_account">Konto wird erstellt…</string>
+    <string name="login_preparing_sync">Synchronisierung wird vorbereitet…</string>
     <string name="register">Registrieren</string>
     <string name="logout">Abmelden</string>
     <string name="loggedIn">Angemeldet.</string>
