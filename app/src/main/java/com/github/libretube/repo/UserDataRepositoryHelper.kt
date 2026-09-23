@@ -15,16 +15,21 @@ object UserDataRepositoryHelper {
 
     @Deprecated("DO NOT use this directly, use the wrappers from PlaylistHelper and SubscriptionHelper instead!")
     val userDataRepository: UserDataRepository
-        get() = when (syncServerType) {
-            SyncServerType.PIPED -> PipedUserDataRepository()
-            SyncServerType.LIBRETUBE -> LibreTubeSyncServerUserDataRepository()
-            else -> LocalUserDataRepository()
-        }
+        get() = userDataRepositoryFor(syncServerType)
+
+    private fun userDataRepositoryFor(type: SyncServerType): UserDataRepository = when (type) {
+        SyncServerType.PIPED -> PipedUserDataRepository()
+        SyncServerType.LIBRETUBE -> LibreTubeSyncServerUserDataRepository()
+        else -> LocalUserDataRepository()
+    }
 
     @Deprecated("DO NOT use this directly, use the wrappers from SubscriptionHelper instead!")
     val feedRepository: FeedRepository
-        get() = when (syncServerType to loggedIn) {
-            SyncServerType.PIPED to true -> PipedAccountFeedRepository()
-            else -> LocalFeedRepository()
+        get() {
+            val type = syncServerType
+            return when (type to loggedIn) {
+                SyncServerType.PIPED to true -> PipedAccountFeedRepository()
+                else -> LocalFeedRepository(userDataRepositoryFor(type), type)
+            }
         }
 }
