@@ -10,12 +10,13 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import retrofit2.create
+import java.util.concurrent.TimeUnit
 
 typealias HeadersAccessor = () -> Map<String, String>
 
 object RetrofitInstance {
     const val PIPED_API_URL = "https://pipedapi.kavin.rocks"
-    private const val LIBRETUBE_SYNC_SERVER_URL = "https://sync.libretube.dev"
+    private const val LIBRETUBE_SYNC_SERVER_URL = "https://sync.opentubex.org/"
 
     val pipedAuthUrl
         get() = PreferenceHelper.getString(
@@ -27,7 +28,9 @@ object RetrofitInstance {
         get() = PreferenceHelper.getString(
             PreferenceKeys.LIBRETUBE_SYNC_SERVER_URL,
             LIBRETUBE_SYNC_SERVER_URL
-        )
+        ).trimEnd('/') + "/"
+
+    val isOpenTubeXSyncServer get() = libretubeSyncServerUrl == LIBRETUBE_SYNC_SERVER_URL
 
     val apiLazyMgr = resettableManager()
     val kotlinxConverterFactory = JsonHelper.json
@@ -67,7 +70,15 @@ object RetrofitInstance {
                 request.addHeader(key, value)
             }
 
-            interceptorChain.proceed(request.build())
+            val path = interceptorChain.request().url.encodedPath
+            val syncTransfer = path.contains("/v1/encrypted_sync") ||
+                path.contains("/v1/watch_history/") || path.contains("/v1/playlists/") ||
+                path.contains("/v1/subscriptions/") || path.contains("/v1/playlist_bookmarks/")
+            val chain = if (syncTransfer) {
+                interceptorChain.withReadTimeout(5, TimeUnit.MINUTES)
+                    .withWriteTimeout(5, TimeUnit.MINUTES)
+            } else interceptorChain
+            chain.proceed(request.build())
         }
 
         if (BuildConfig.DEBUG) {

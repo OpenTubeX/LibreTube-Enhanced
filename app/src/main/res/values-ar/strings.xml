@@ -559,17 +559,13 @@
     <string name="load_data_from">تحميل بيانات YouTube من</string>
     <string name="load_data_from_local">مباشرةً من YouTube</string>
     <string name="load_data_from_piped">عبر Piped (متوقف عن التطوير مؤقتًا)</string>
-    <string name="libretube_sync_server">خادم مزامنة Libre Tube</string>
+    <string name="opentubex_sync_server">خادم مزامنة OpenTubeX</string>
     <string name="data_synchronization">مزامنة البيانات</string>
-    <string name="sync_server_type">مزامنة بيانات المستخدم (الاشتراكات، قوائم التشغيل) عبر</string>
-    <string name="sync_server_url">رابط خادم مزامنة Libre Tube</string>
     <string name="export">تصدير</string>
     <string name="exporting">جاري التصدير…</string>
     <string name="missing_auth_falling_back">لم يتم تسجيل الدخول تم إيقاف مزامنة البيانات.</string>
     <string name="sync_type_summary_none">قم بتخزين جميع بيانات المستخدم دون اتصال بالإنترنت داخل التطبيق هذا يعني أنه لا يمكنك مزامنة البيانات بين أجهزتك ولكنه قد يكون الخيار الصحيح إذا كنت تستخدم جهازًا واحدًا فقط أو لا تهتم بالمزامنة بين الأجهزة.</string>
-    <string name="sync_type_summary_libretube">خزّن بيانات قوائم التشغيل والاشتراكات على خادم المزامنة الخاص بـ LibreTube (%1$s) يتيح لك ذلك تسجيل الدخول إلى حسابك على أي جهاز آخر للوصول إلى اشتراكاتك وقوائم التشغيل إخلاء مسؤولية الخصوصية: تُستخدم أسماء مستعارة لبيانات المستخدم على جانب الخادم ولكنها ليست مشفّرة من طرف إلى طرف. يمكنك أيضًا، إن أردت استضافة نسختك الخاصة من الخادم لكن عادةً ما يكون الخادم الرسمي كافيًا تمامًا.</string>
     <string name="sync_type_summary_piped">للخبراء فقط. متوقف عن التطوير مؤقتًا: خزّن بيانات قوائم التشغيل والاشتراكات على Piped (%1$s) بما أنه لم يعد لدى Piped أي خوادم عامة فعليك استضافة خادم Piped خاص بك.</string>
     <string name="switch_sync_type_warning">إذا كنت قد استخدمت نوع مزامنة مختلفًا سابقًا فيُرجى أخذ نسخة احتياطية من اشتراكاتك وقوائم التشغيل أولاً يمكنك بعد ذلك تبديل نوع المزامنة في إعدادات المثيل وإعادة استيراد بياناتك من النسخة الاحتياطية.</string>
-    <string name="oidc_login">المتابعة مع OIDC</string>
     <string name="already_downloaded">لقد قمت بتنزيل هذا الفيديو بالفعل!</string>
 </resources>

@@ -13,9 +13,9 @@ data class Channel(
     val id: String,
 
     @SerialName(value = "name")
-    val name: String,
+    val name: String = "",
 
     @SerialName(value = "verified")
-    val verified: Boolean
+    val verified: Boolean = false
 
 )

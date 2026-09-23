@@ -554,6 +554,6 @@
     <string name="load_data_from">Завантажити дані YouTube з</string>
     <string name="load_data_from_local">Безпосередньо з YouTube</string>
     <string name="load_data_from_piped">через Piped (застаріло)</string>
-    <string name="libretube_sync_server">Сервер синхронізації LibreTube</string>
+    <string name="opentubex_sync_server">Сервер синхронізації OpenTubeX</string>
     <string name="data_synchronization">Синхронізація даних</string>
 </resources>

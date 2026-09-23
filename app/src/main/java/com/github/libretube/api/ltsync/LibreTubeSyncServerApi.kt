@@ -14,6 +14,9 @@ import com.github.libretube.api.ltsync.obj.PlaylistResponse
 import com.github.libretube.api.ltsync.obj.RegisterUser
 import com.github.libretube.api.ltsync.obj.SubscriptionGroup
 import com.github.libretube.api.ltsync.obj.WatchHistoryItem
+import com.github.libretube.api.ltsync.obj.EncryptedSyncCollection
+import com.github.libretube.api.ltsync.obj.EncryptedSyncManifest
+import com.github.libretube.api.ltsync.obj.PutEncryptedSyncCollection
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -23,11 +26,30 @@ import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
+import okhttp3.ResponseBody
 
 // Generated based on the server's OpenAPI spec, using https://openapi-generator.tech/docs/generators/kotlin/
 // generate -i api-spec.yaml -g kotlin -o outdir --library jvm-retrofit2 --additional-properties=serializationLibrary=kotlinx_serialization
 
 interface LibreTubeSyncServerApi {
+    @GET("health")
+    suspend fun health(): ResponseBody
+
+    @GET("v1/encrypted_sync")
+    suspend fun getEncryptedSyncManifest(): EncryptedSyncManifest
+
+    @GET("v1/encrypted_sync/legacy")
+    suspend fun getLegacyEncryptedSync(): EncryptedSyncCollection
+
+    @GET("v1/encrypted_sync/{collection}")
+    suspend fun getEncryptedSyncCollection(@Path("collection") collection: String): EncryptedSyncCollection
+
+    @PUT("v1/encrypted_sync/{collection}")
+    suspend fun putEncryptedSyncCollection(
+        @Path("collection") collection: String,
+        @Body data: PutEncryptedSyncCollection
+    ): EncryptedSyncCollection
+
     // workaround for https://stackoverflow.com/questions/37942474/delete-method-is-not-supportingnon-body-http-method-cannot-contain-body-or-t
     @HTTP(method = "DELETE",  path ="v1/account/delete", hasBody = true)
     suspend fun deleteAccount(@Body deleteUser: DeleteUser)
@@ -112,8 +134,9 @@ interface LibreTubeSyncServerApi {
     @GET("v1/watch_history/")
     suspend fun getWatchHistory(
         @Query("page") page: Int,
-        @Query("pageSize") pageSize: Int,
-        @Query("state") state: String?
+        @Query("page_size") pageSize: Int,
+        @Query("state") state: String?,
+        @Query("pageSize") legacyPageSize: Int = pageSize
     ): List<ExtendedWatchHistoryItem>
 
     @DELETE("v1/watch_history/{video_id}")

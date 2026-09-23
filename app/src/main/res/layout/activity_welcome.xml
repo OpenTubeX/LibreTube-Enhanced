@@ -72,7 +72,7 @@
                 style="?attr/materialButtonOutlinedStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/libretube_sync_server" />
+                android:text="@string/opentubex_sync_server" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/sync_mode_piped"

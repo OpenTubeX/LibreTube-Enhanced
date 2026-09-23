@@ -540,7 +540,6 @@
     <string name="long_press_fast_forward">Adelanta al mantener</string>
     <string name="long_press_fast_forward_summary">Reproduce el vídeo a doble velocidad mientras pulsas y mantienes la pantalla.</string>
     <string name="defaults">Predeterminados</string>
-    <string name="sync_server_url">URL al servidor de sincronización de LibreTube</string>
     <string name="export">Exportar</string>
     <string name="exporting">Exportación en progreso…</string>
     <string name="welcome">¡Bienvenido a LibreTube! Para empezar, por favor, selecciona un modo de sincronización debajo para decidir si sincronizar tus datos de usuario entre dispositivos.</string>
@@ -549,15 +548,12 @@
     <string name="load_data_from">Cargar datos de YouTube desde</string>
     <string name="load_data_from_local">Directamente desde YouTube</string>
     <string name="load_data_from_piped">via Piped (deprecado)</string>
-    <string name="libretube_sync_server">Servidor de sincronización LibreTube</string>
+    <string name="opentubex_sync_server">Servidor de sincronización OpenTubeX</string>
     <string name="data_synchronization">Sincronización de datos</string>
-    <string name="sync_server_type">Sincronizar datos de usuario (suscripciones, listas de reproducción) via</string>
     <string name="resume_all">Continuar descargas</string>
     <string name="missing_auth_falling_back">Sin sesión iniciada. Sincronización de datos desactivada.</string>
     <string name="sync_type_summary_none">Almacena todos los datos de usuario offline dentro de la app. Esto significa que no puedes sincronizar los datos entre dispositivos, pero puede ser la decisión adecuada si solo usas un dispositivo o no te importa la sincronización entre dispositivos.</string>
-    <string name="sync_type_summary_libretube">Almacena los datos de listas de reproducción y suscripciones en el servidor de sincronización de LibreTube (%1$s). Esto te permite iniciar sesión en tu cuenta desde cualquier otro dispositivo y tener acceso a tus suscripciones y listas de reproducción. Aviso de privacidad: Los datos de usuario son pseudoanonimizados del lado de servidor, pero no encriptados de extremo a extremo. Por elección, puedes también hostear tu propia versión del servidor, pero normalmente el servidor oficialmente debería estar bien.</string>
     <string name="sync_type_summary_piped">Solo expertos, deprecado:\nAlmacena los datos de listas de reproducción y suscripciones en Piped (%1$s). Como Piped ya no tiene ninguna instancia publica, tienes que hostear tu propia instancia de Piped.</string>
-    <string name="oidc_login">Continuar con OIDC</string>
     <string name="already_downloaded">¡Ya te has descargado este video!</string>
     <string name="comment_verified">Verificado</string>
     <string name="comment_pinned">Fijado</string>

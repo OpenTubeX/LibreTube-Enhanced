@@ -8,6 +8,8 @@ object PreferenceKeys {
     // Authentications
     const val TOKEN = "token"
     const val USERNAME = "username"
+    const val SYNC_PRIVACY_KEY = "sync_privacy_key"
+    const val SYNC_PRIVACY_SALT = "sync_privacy_salt"
 
     // General
     const val LANGUAGE = "language"

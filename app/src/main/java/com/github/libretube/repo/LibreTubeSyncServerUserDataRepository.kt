@@ -1,6 +1,10 @@
 package com.github.libretube.repo
 
 import com.github.libretube.api.RetrofitInstance
+import com.github.libretube.api.JsonHelper
+import com.github.libretube.api.ltsync.EncryptedSyncCrypto
+import com.github.libretube.api.ltsync.LibreTubeSyncServerApi
+import com.github.libretube.api.ltsync.obj.HealthResponse
 import com.github.libretube.api.ltsync.obj.Channel
 import com.github.libretube.api.ltsync.obj.CreatePlaylist
 import com.github.libretube.api.ltsync.obj.CreateVideo
@@ -10,6 +14,7 @@ import com.github.libretube.api.ltsync.obj.ExtendedPublicPlaylist
 import com.github.libretube.api.ltsync.obj.ExtendedSubscriptionGroup
 import com.github.libretube.api.ltsync.obj.ExtendedWatchHistoryItem
 import com.github.libretube.api.ltsync.obj.LoginUser
+import com.github.libretube.api.ltsync.obj.PutEncryptedSyncCollection
 import com.github.libretube.api.ltsync.obj.RegisterUser
 import com.github.libretube.api.ltsync.obj.WatchHistoryItem
 import com.github.libretube.api.ltsync.obj.WatchedState
@@ -23,6 +28,8 @@ import com.github.libretube.db.obj.PlaylistBookmark
 import com.github.libretube.db.obj.SubscriptionGroup
 import com.github.libretube.enums.WatchHistoryStatus
 import com.github.libretube.extensions.toID
+import com.github.libretube.helpers.PreferenceHelper
+import kotlinx.serialization.json.JsonArray
 import retrofit2.HttpException
 
 class LibreTubeSyncServerUserDataRepository : UserDataRepository {
@@ -62,6 +69,63 @@ class LibreTubeSyncServerUserDataRepository : UserDataRepository {
         }
     }
 
+    override suspend fun validateRegistration(password: String, privacyPassphrase: String) {
+        validatePrivacyPassphrase(password, privacyPassphrase, supportsEncryptedSync(api))
+    }
+
+    private suspend fun supportsEncryptedSync(api: LibreTubeSyncServerApi): Boolean {
+        val health = api.health().string().trim()
+        return health != "OK" &&
+            JsonHelper.json.decodeFromString<HealthResponse>(health).capabilities.encryptedSync == 1
+    }
+
+    private fun validatePrivacyPassphrase(password: String, privacyPassphrase: String, encrypted: Boolean) {
+        if (!encrypted) {
+            require(privacyPassphrase.isEmpty()) { "This server does not support encrypted sync" }
+            return
+        }
+        require(privacyPassphrase.length >= 12) { "Privacy passphrase must have at least 12 characters" }
+        require(privacyPassphrase != password) { "Privacy passphrase must differ from account password" }
+    }
+
+    override suspend fun prepareSync(token: String, password: String, privacyPassphrase: String) {
+        val api = RetrofitInstance.buildRetrofitInstance<LibreTubeSyncServerApi>(
+            baseUrl,
+            headersAccessor = { mapOf("Authorization" to token) }
+        )
+        val encrypted = supportsEncryptedSync(api)
+        validatePrivacyPassphrase(password, privacyPassphrase, encrypted)
+        if (!encrypted) {
+            PreferenceHelper.setSyncPrivacy("", "")
+            return
+        }
+        val manifest = api.getEncryptedSyncManifest()
+        var payload: String? = null
+        for (entry in manifest.collections) {
+            payload = api.getEncryptedSyncCollection(entry.collection).payload
+            if (payload != null) break
+        }
+        if (payload == null && manifest.legacyEncryptedData) {
+            payload = api.getLegacyEncryptedSync().payload
+        }
+        var crypto = EncryptedSyncCrypto.fromPassphrase(privacyPassphrase, payload)
+        if (payload == null) {
+            try {
+                // Establish one shared salt before another device signs in.
+                api.putEncryptedSyncCollection(
+                    "settings", PutEncryptedSyncCollection(0, crypto.encrypt(JsonArray(emptyList())))
+                )
+            } catch (error: HttpException) {
+                if (error.code() != 409) throw error
+                val winner = api.getEncryptedSyncCollection("settings").payload
+                    ?: throw IllegalStateException("Encrypted sync was initialized on another device; try again")
+                crypto = EncryptedSyncCrypto.fromPassphrase(privacyPassphrase, winner)
+            }
+        }
+        EncryptedSyncServerUserDataRepository(api, crypto).migrateLegacyData()
+        PreferenceHelper.setSyncPrivacy(crypto.key, crypto.salt)
+    }
+
     override suspend fun deleteAccount(password: String) {
         tryHttpOrRaiseError {
             api.deleteAccount(
@@ -69,11 +133,6 @@ class LibreTubeSyncServerUserDataRepository : UserDataRepository {
             )
         }
     }
-
-    override fun getOidcLoginUrl(redirectUrl: String): String =
-        "$baseUrl/v1/account/oidc/authenticate?redirect_url=$redirectUrl"
-    override fun getOidcDeleteAccountUrl(redirectUrl: String): String =
-        "$baseUrl/v1/account/oidc/delete?redirect_url=$redirectUrl"
 
     override suspend fun subscribe(
         channelId: String,
@@ -284,7 +343,7 @@ class LibreTubeSyncServerUserDataRepository : UserDataRepository {
             videoId = videoId,
             addedDate = addedDate,
             finished = watchedState == WatchedState.Completed,
-            positionMillis = positionMillis?.toLong()
+            positionMillis = positionMillis
         )
     }
 
@@ -299,7 +358,7 @@ class LibreTubeSyncServerUserDataRepository : UserDataRepository {
         return WatchHistoryItem(
             addedDate = addedDate,
             watchedState = if (finished) WatchedState.Completed else WatchedState.Watching,
-            positionMillis = positionMillis?.toInt()
+            positionMillis = positionMillis?.toInt()?.toLong()
         )
     }
 

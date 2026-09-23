@@ -22,6 +22,8 @@
     <application
         android:name=".LibreTubeApp"
         android:allowBackup="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:banner="@mipmap/ic_launcher"
         android:enableOnBackInvokedCallback="true"
         android:hardwareAccelerated="true"
@@ -50,18 +52,6 @@
             android:launchMode="singleTop"
             android:label="@string/settings"
             android:screenOrientation="locked">
-
-            <!-- OIDC callbacks -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data android:scheme="${applicationId}" />
-                <data android:host="login_callback" />
-                <data android:host="delete_callback" />
-            </intent-filter>
 
         </activity>
 

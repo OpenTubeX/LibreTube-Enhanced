@@ -104,8 +104,8 @@ class WelcomeActivity : BaseActivity() {
             binding.infoText.text = when (syncServerType) {
                 SyncServerType.NONE -> getString(R.string.sync_type_summary_none)
                 SyncServerType.LIBRETUBE -> getString(
-                    R.string.sync_type_summary_libretube,
-                    "https://github.com/libre-tube/sync-server"
+                    R.string.sync_type_summary_sync_server,
+                    com.github.libretube.api.RetrofitInstance.libretubeSyncServerUrl
                 )
 
                 SyncServerType.PIPED -> getString(

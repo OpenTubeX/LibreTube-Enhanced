@@ -17,7 +17,9 @@ data class ExtendedPublicPlaylist(
     val playlist: ExtendedPlaylist,
 
     @SerialName(value = "uploader")
-    val uploader: Channel
+    val uploader: Channel,
+
+    val savedAt: Long? = null
 ) {
     fun toPlaylistBookmark(): PlaylistBookmark {
         return PlaylistBookmark(
@@ -31,4 +33,3 @@ data class ExtendedPublicPlaylist(
         )
     }
 }
-

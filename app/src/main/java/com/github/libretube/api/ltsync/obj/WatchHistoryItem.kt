@@ -14,5 +14,5 @@ data class WatchHistoryItem(
     val watchedState: WatchedState,
 
     @SerialName(value = "position_millis")
-    val positionMillis: Int? = null
+    val positionMillis: Long? = null
 )
