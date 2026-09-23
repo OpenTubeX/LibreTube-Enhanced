@@ -26,39 +26,40 @@ import kotlinx.coroutines.withContext
 class LoginDialog : DialogFragment() {
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val binding = DialogLoginBinding.inflate(layoutInflater)
+        val alreadyLoggedIn = PreferenceHelper.getToken().isNotBlank()
         binding.privacyPassphraseInput.isVisible =
             UserDataRepositoryHelper.syncServerType == SyncServerType.LIBRETUBE
 
-        return MaterialAlertDialogBuilder(requireContext())
+        val builder = MaterialAlertDialogBuilder(requireContext())
             .setTitle(R.string.login)
             .setPositiveButton(R.string.login, null)
-            .setNegativeButton(R.string.register, null)
             .setView(binding.root)
-            .show()
-            .apply {
-                getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener {
-                    val email = binding.username.text?.toString()
-                    val password = binding.password.text?.toString()
+        if (!alreadyLoggedIn) builder.setNegativeButton(R.string.register, null)
 
-                    if (!email.isNullOrEmpty() && !password.isNullOrEmpty()) {
-                        signIn(email, password, binding.privacyPassphrase.text?.toString().orEmpty())
-                    } else {
-                        Toast.makeText(context, R.string.empty, Toast.LENGTH_SHORT).show()
-                    }
-                }
-                getButton(DialogInterface.BUTTON_NEGATIVE).setOnClickListener {
-                    val email = binding.username.text?.toString().orEmpty()
-                    val password = binding.password.text?.toString().orEmpty()
+        return builder.show().apply {
+            getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener {
+                val email = binding.username.text?.toString()
+                val password = binding.password.text?.toString()
 
-                    if (isEmail(email)) {
-                        showPrivacyAlertDialog(email, password, binding.privacyPassphrase.text?.toString().orEmpty())
-                    } else if (email.isNotEmpty() && password.isNotEmpty()) {
-                        signIn(email, password, binding.privacyPassphrase.text?.toString().orEmpty(), true)
-                    } else {
-                        Toast.makeText(context, R.string.empty, Toast.LENGTH_SHORT).show()
-                    }
+                if (!email.isNullOrEmpty() && !password.isNullOrEmpty()) {
+                    signIn(email, password, binding.privacyPassphrase.text?.toString().orEmpty())
+                } else {
+                    Toast.makeText(context, R.string.empty, Toast.LENGTH_SHORT).show()
                 }
             }
+            if (!alreadyLoggedIn) getButton(DialogInterface.BUTTON_NEGATIVE).setOnClickListener {
+                val email = binding.username.text?.toString().orEmpty()
+                val password = binding.password.text?.toString().orEmpty()
+
+                if (isEmail(email)) {
+                    showPrivacyAlertDialog(email, password, binding.privacyPassphrase.text?.toString().orEmpty())
+                } else if (email.isNotEmpty() && password.isNotEmpty()) {
+                    signIn(email, password, binding.privacyPassphrase.text?.toString().orEmpty(), true)
+                } else {
+                    Toast.makeText(context, R.string.empty, Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 
     private fun signIn(
