@@ -61,23 +61,14 @@ class LocalFeedRepository : FeedRepository {
         }
         // Keep other sources' cached videos for when the user switches back.
         val channelIdSet = channelIds.toHashSet()
-        val channelSetHash = channelIds.sorted().joinToString("\n").sha256Sum()
-        val refreshTimestampKey =
+        // Preserve the local cache's freshness after upgrades; scope sync caches to their channels.
+        val refreshTimestampKey = if (UserDataRepositoryHelper.syncServerType == SyncServerType.NONE) {
+            PreferenceKeys.LAST_LOCAL_FEED_REFRESH_TIMESTAMP_MILLIS
+        } else {
+            val channelSetHash = channelIds.sorted().joinToString("\n").sha256Sum()
             "${PreferenceKeys.LAST_LOCAL_FEED_REFRESH_TIMESTAMP_MILLIS}_$channelSetHash"
-        var lastRefreshMillis = PreferenceHelper.getLong(refreshTimestampKey, 0)
-        // Preserve the existing local feed's freshness on the first load after upgrading.
-        if (UserDataRepositoryHelper.syncServerType == SyncServerType.NONE) {
-            val previousRefreshMillis = PreferenceHelper.getLong(
-                PreferenceKeys.LAST_LOCAL_FEED_REFRESH_TIMESTAMP_MILLIS, 0
-            )
-            if (previousRefreshMillis != 0L) {
-                if (lastRefreshMillis == 0L) {
-                    lastRefreshMillis = previousRefreshMillis
-                    PreferenceHelper.putLong(refreshTimestampKey, previousRefreshMillis)
-                }
-                PreferenceHelper.remove(PreferenceKeys.LAST_LOCAL_FEED_REFRESH_TIMESTAMP_MILLIS)
-            }
         }
+        val lastRefreshMillis = PreferenceHelper.getLong(refreshTimestampKey, 0)
 
         if (!forceRefresh) {
             val feed = getCachedFeed(channelIdSet)
