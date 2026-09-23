@@ -14,6 +14,7 @@ import com.github.libretube.extensions.TAG
 import com.github.libretube.extensions.toastFromMainDispatcher
 import com.github.libretube.obj.BackupFile
 import com.github.libretube.obj.PreferenceItem
+import com.github.libretube.repo.UserDataRepositoryHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -72,6 +73,7 @@ object BackupHelper {
         }
 
         restorePreferences(context, backupFile.preferences)
+        UserDataRepositoryHelper.fallBackToLocalIfLoggedOut()
     }
 
     /**
