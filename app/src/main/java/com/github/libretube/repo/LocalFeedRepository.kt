@@ -53,12 +53,12 @@ class LocalFeedRepository : FeedRepository {
         val minimumDateMillis = nowMillis - Duration.ofDays(MAX_FEED_AGE_DAYS).toMillis()
 
         val channelIds = SubscriptionHelper.getSubscriptionChannelIds()
-        // remove all channels that are no longer subscribed to, e.g. when the user switched
-        // the account
-        DatabaseHolder.Database.feedDao().deleteAllExcept(channelIds)
+        if (channelIds.isEmpty()) return emptyList()
+        // Keep other sources' cached videos for when the user switches back.
+        val channelIdSet = channelIds.toHashSet()
 
         if (!forceRefresh) {
-            val feed = DatabaseHolder.Database.feedDao().getAll()
+            val feed = getCachedFeed(channelIdSet)
             val lastRefreshMillis =
                 PreferenceHelper.getLong(PreferenceKeys.LAST_LOCAL_FEED_REFRESH_TIMESTAMP_MILLIS, 0)
             val durationSinceLastRefresh = nowMillis - lastRefreshMillis
@@ -73,8 +73,12 @@ class LocalFeedRepository : FeedRepository {
         refreshFeed(channelIds, minimumDateMillis, onProgressUpdate)
         PreferenceHelper.putLong(PreferenceKeys.LAST_LOCAL_FEED_REFRESH_TIMESTAMP_MILLIS, nowMillis)
 
-        return DatabaseHolder.Database.feedDao().getAll().map(SubscriptionsFeedItem::toStreamItem)
+        return getCachedFeed(channelIdSet)
+            .map(SubscriptionsFeedItem::toStreamItem)
     }
+
+    private suspend fun getCachedFeed(channelIds: Set<String>) =
+        DatabaseHolder.Database.feedDao().getAll().filter { it.uploaderUrl in channelIds }
 
     private suspend fun refreshFeed(
         channelIds: List<String>,

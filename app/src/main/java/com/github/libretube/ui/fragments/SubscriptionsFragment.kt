@@ -3,6 +3,7 @@ package com.github.libretube.ui.fragments
 import android.annotation.SuppressLint
 import android.content.res.Configuration
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import androidx.core.os.bundleOf
 import androidx.core.view.children
@@ -18,6 +19,7 @@ import com.github.libretube.constants.IntentData
 import com.github.libretube.constants.PreferenceKeys
 import com.github.libretube.databinding.FragmentSubscriptionsBinding
 import com.github.libretube.db.DatabaseHelper
+import com.github.libretube.extensions.TAG
 import com.github.libretube.extensions.toID
 import com.github.libretube.helpers.NavigationHelper
 import com.github.libretube.helpers.PreferenceHelper
@@ -36,6 +38,8 @@ import com.github.libretube.util.PlayingQueue
 import com.google.android.material.chip.Chip
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlin.coroutines.cancellation.CancellationException
 
 
 class SubscriptionsFragment : DynamicLayoutManagerFragment(R.layout.fragment_subscriptions) {
@@ -81,6 +85,7 @@ class SubscriptionsFragment : DynamicLayoutManagerFragment(R.layout.fragment_sub
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         _binding = FragmentSubscriptionsBinding.bind(view)
         super.onViewCreated(view, savedInstanceState)
+        val sourceChanged = invalidateChangedSource()
 
         setupSortAndFilter()
 
@@ -102,6 +107,7 @@ class SubscriptionsFragment : DynamicLayoutManagerFragment(R.layout.fragment_sub
         if (viewModel.videoFeed.value == null) {
             viewModel.fetchFeed(requireContext(), forceRefresh = false)
         }
+        if (sourceChanged) viewModel.fetchSubscriptions(requireContext())
 
         // only restore the previous state (i.e. scroll position) the first time the feed is shown
         // any other feed updates are caused by manual refreshing and thus should reset the scroll
@@ -185,9 +191,50 @@ class SubscriptionsFragment : DynamicLayoutManagerFragment(R.layout.fragment_sub
             }
         })
 
-        lifecycleScope.launch(Dispatchers.IO) {
-            val groups = UserDataRepositoryHelper.userDataRepository.getSubscriptionGroups()
-            viewModel.groups.postValue(groups)
+        fetchGroups()
+    }
+
+    override fun onResume() {
+        super.onResume()
+
+        if (!invalidateChangedSource()) return
+        feedAdapter.submitList(emptyList())
+        binding.subFeed.isGone = true
+        binding.emptyFeed.isGone = true
+        binding.subProgress.isVisible = true
+
+        viewModel.fetchFeed(requireContext(), forceRefresh = false)
+        viewModel.fetchSubscriptions(requireContext())
+        fetchGroups()
+    }
+
+    private fun invalidateChangedSource(): Boolean {
+        val sourceRevision = viewModel.currentSourceRevision
+        if (viewModel.displayedSourceRevision == sourceRevision) return false
+
+        viewModel.displayedSourceRevision = sourceRevision
+        viewModel.videoFeed.value = null
+        viewModel.subscriptions.value = null
+        viewModel.groups.value = null
+        return true
+    }
+
+    private fun fetchGroups() {
+        val sourceRevision = viewModel.currentSourceRevision
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            val groups = try {
+                UserDataRepositoryHelper.userDataRepository.getSubscriptionGroups()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(this@SubscriptionsFragment.TAG(), "Failed to load subscription groups", e)
+                emptyList()
+            }
+            withContext(Dispatchers.Main) {
+                if (sourceRevision == viewModel.currentSourceRevision) {
+                    viewModel.groups.value = groups
+                }
+            }
         }
     }
 
