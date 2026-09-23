@@ -120,12 +120,16 @@ class WatchHistoryModel : ViewModel() {
         fetchNextPage()
     }
 
-    fun onHistoryCleared() {
+    fun cancelPendingHistoryPage() {
         fetchJob?.cancel()
+    }
+
+    fun onHistoryCleared() {
+        cancelPendingHistoryPage()
         nextHistoryPage = WatchHistoryPage.AllLoaded
+        _filteredWatchHistory.value = emptyList()
         _isLoadingFirstPage.value = false
         _loadError.value = false
-        _filteredWatchHistory.value = emptyList()
     }
 
     fun isVideoDownloaded(videoId: String) = videoId in downloadedVideoIds

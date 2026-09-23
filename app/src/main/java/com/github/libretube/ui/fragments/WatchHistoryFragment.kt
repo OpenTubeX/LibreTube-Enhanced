@@ -101,17 +101,22 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment(R.layout.fragment_watc
                     selected[index] = newValue
                 }
                 .setPositiveButton(R.string.okay) { _, _ ->
-                    viewModel.onHistoryCleared()
+                    viewModel.cancelPendingHistoryPage()
                     binding.watchHistoryRecView.isGone = true
                     binding.historyEmpty.isVisible = true
                     binding.clear.isVisible = true
                     binding.playAll.isGone = true
                     binding.statusFilterChips.isGone = true
 
-                    lifecycleScope.launch(Dispatchers.IO) {
+                    lifecycleScope.launch {
                         try {
-                            UserDataRepositoryHelper.userDataRepository.clearWatchHistory()
+                            withContext(Dispatchers.IO) {
+                                UserDataRepositoryHelper.userDataRepository.clearWatchHistory()
+                            }
+                            viewModel.onHistoryCleared()
                         } catch (e: Exception) {
+                            _binding?.statusFilterChips?.isVisible = true
+                            if (_binding != null) updateHistoryVisibility()
                             context?.toastFromMainDispatcher(e.message.orEmpty())
                         }
                     }
@@ -193,6 +198,11 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment(R.layout.fragment_watc
         if (!isLoading && hasError && hasHistory && pageErrorSnackbar == null) {
             pageErrorSnackbar = Snackbar.make(binding.root, R.string.history_load_error, Snackbar.LENGTH_INDEFINITE)
                 .setAction(R.string.retry) { viewModel.retryPage() }
+                .addCallback(object : Snackbar.Callback() {
+                    override fun onDismissed(transientBottomBar: Snackbar?, event: Int) {
+                        if (pageErrorSnackbar === transientBottomBar) pageErrorSnackbar = null
+                    }
+                })
                 .also { it.show() }
         } else if (isLoading || !hasError || !hasHistory) {
             pageErrorSnackbar?.dismiss()
