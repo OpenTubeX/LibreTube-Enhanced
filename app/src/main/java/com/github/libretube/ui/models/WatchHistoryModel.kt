@@ -106,19 +106,26 @@ class WatchHistoryModel : ViewModel() {
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                if (!isFirstPage) throw e
                 Log.e("WatchHistoryModel", "Failed to load history", e)
                 _loadError.value = true
-                _isLoadingFirstPage.value = false
+                if (isFirstPage) _isLoadingFirstPage.value = false
             }
         }
     }
 
-    fun retryFirstPage() {
-        if (nextHistoryPage != WatchHistoryPage.First) return
-        _isLoadingFirstPage.value = true
+    fun retryPage() {
+        if (_loadError.value != true) return
+        if (nextHistoryPage == WatchHistoryPage.First) _isLoadingFirstPage.value = true
         _loadError.value = false
         fetchNextPage()
+    }
+
+    fun onHistoryCleared() {
+        fetchJob?.cancel()
+        nextHistoryPage = WatchHistoryPage.AllLoaded
+        _isLoadingFirstPage.value = false
+        _loadError.value = false
+        _filteredWatchHistory.value = emptyList()
     }
 
     fun isVideoDownloaded(videoId: String) = videoId in downloadedVideoIds

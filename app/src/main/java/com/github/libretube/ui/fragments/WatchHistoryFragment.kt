@@ -35,6 +35,7 @@ import com.github.libretube.ui.models.CommonPlayerViewModel
 import com.github.libretube.ui.models.WatchHistoryModel
 import com.github.libretube.util.PlayingQueue
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -45,6 +46,7 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment(R.layout.fragment_watc
 
     private val commonPlayerViewModel: CommonPlayerViewModel by activityViewModels()
     private var recyclerViewState: Parcelable? = null
+    private var pageErrorSnackbar: Snackbar? = null
 
     private val viewModel: WatchHistoryModel by viewModels()
 
@@ -99,6 +101,7 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment(R.layout.fragment_watc
                     selected[index] = newValue
                 }
                 .setPositiveButton(R.string.okay) { _, _ ->
+                    viewModel.onHistoryCleared()
                     binding.watchHistoryRecView.isGone = true
                     binding.historyEmpty.isVisible = true
                     binding.clear.isVisible = true
@@ -160,7 +163,7 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment(R.layout.fragment_watc
         viewModel.loadError.observe(viewLifecycleOwner) {
             updateHistoryVisibility()
         }
-        binding.retryHistory.setOnClickListener { viewModel.retryFirstPage() }
+        binding.retryHistory.setOnClickListener { viewModel.retryPage() }
 
         binding.watchHistoryRecView.addOnBottomReachedListener(prefetchDistance = 20) {
             viewModel.fetchNextPage()
@@ -186,6 +189,15 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment(R.layout.fragment_watc
         binding.watchHistoryRecView.isVisible = !isLoading && hasHistory
         binding.clear.isVisible = !isLoading && hasHistory
         binding.playAll.isVisible = !isLoading && hasHistory
+
+        if (!isLoading && hasError && hasHistory && pageErrorSnackbar == null) {
+            pageErrorSnackbar = Snackbar.make(binding.root, R.string.history_load_error, Snackbar.LENGTH_INDEFINITE)
+                .setAction(R.string.retry) { viewModel.retryPage() }
+                .also { it.show() }
+        } else if (isLoading || !hasError || !hasHistory) {
+            pageErrorSnackbar?.dismiss()
+            pageErrorSnackbar = null
+        }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -195,6 +207,8 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment(R.layout.fragment_watc
     }
 
     override fun onDestroyView() {
+        pageErrorSnackbar?.dismiss()
+        pageErrorSnackbar = null
         super.onDestroyView()
         _binding = null
     }
