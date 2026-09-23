@@ -39,14 +39,19 @@ class EncryptedSyncMigrationTest {
                 }
                 path == "/v1/subscriptions/" ->
                     """[{"id":"UC123","name":"Channel","avatar":null,"verified":false}]"""
+                path == "/v1/playlists/" ->
+                    """[{"id":"playlist-1","title":"Favorites","description":""}]"""
+                path == "/v1/playlists/playlist-1" ->
+                    """{"playlist":{"id":"playlist-1","title":"Favorites","description":""},"videos":[]}"""
                 path == "/v1/watch_history/" -> {
                     assertTrue(exchange.requestURI.query.contains("page_size=100"))
                     assertTrue(exchange.requestURI.query.contains("pageSize=100"))
-                    "[]"
+                    """[{"metadata":{"added_date":123456,"watched_state":"watching","position_millis":1000},"video":{"duration":300,"id":"video-1","thumbnail_url":"","title":"Video","upload_date":0,"uploader":{"avatar":null,"id":"channel-1","name":"Channel","verified":false}}}]"""
                 }
-                path in setOf(
-                    "/v1/playlists/", "/v1/subscriptions/groups/", "/v1/playlist_bookmarks/"
-                ) -> "[]"
+                path == "/v1/subscriptions/groups/" ->
+                    """[{"group":{"id":"group-1","title":"Group"},"channels":[]}]"""
+                path == "/v1/playlist_bookmarks/" ->
+                    """[{"playlist":{"id":"bookmark-1","title":"Bookmark","description":""},"uploader":{"id":"channel-1","name":"Channel"}}]"""
                 else -> error("Unexpected request: $path")
             }
             val bytes = body.toByteArray()
@@ -71,7 +76,60 @@ class EncryptedSyncMigrationTest {
             )
             val subscriptions = crypto.decrypt(uploaded.getValue("subscriptions")).jsonArray
             assertEquals("UC123", subscriptions[0].jsonObject.getValue("id").jsonPrimitive.content)
-            assertTrue(crypto.decrypt(uploaded.getValue("playlists")).jsonArray.isEmpty())
+            assertEquals("playlist-1", crypto.decrypt(uploaded.getValue("playlists")).jsonArray[0]
+                .jsonObject.getValue("playlist").jsonObject.getValue("id").jsonPrimitive.content)
+            assertEquals("video-1", crypto.decrypt(uploaded.getValue("history")).jsonArray[0]
+                .jsonObject.getValue("video").jsonObject.getValue("id").jsonPrimitive.content)
+            assertEquals("group-1", crypto.decrypt(uploaded.getValue("profiles")).jsonArray[0]
+                .jsonObject.getValue("group").jsonObject.getValue("id").jsonPrimitive.content)
+            assertEquals("bookmark-1", crypto.decrypt(uploaded.getValue("playlistBookmarks")).jsonArray[0]
+                .jsonObject.getValue("playlist").jsonObject.getValue("id").jsonPrimitive.content)
+        } finally {
+            server.stop(0)
+        }
+    }
+
+    @Test
+    fun keepsLegacyPlaybackSpeedsWhenAnotherDeviceWinsInitialization() = runBlocking {
+        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
+        val crypto = EncryptedSyncCrypto.fromPassphrase("privacy-passphrase-123", null)
+        val speeds = JsonHelper.json.parseToJsonElement("""[{"videoId":"video-1","speed":1.25}]""")
+        val legacyPayload = crypto.encrypt(JsonHelper.json.parseToJsonElement(
+            """{"playbackSpeeds":$speeds}"""
+        ))
+        var uploaded: String? = null
+        server.createContext("/v1/encrypted_sync") { exchange ->
+            val (status, body) = when (exchange.requestURI.path) {
+                "/v1/encrypted_sync" -> 200 to
+                    """{"collections":[{"collection":"subscriptions","revision":1},{"collection":"playlists","revision":1},{"collection":"history","revision":1},{"collection":"profiles","revision":1},{"collection":"playlistBookmarks","revision":1}],"legacy_data":false,"legacy_encrypted_data":true}"""
+                "/v1/encrypted_sync/legacy" -> 200 to
+                    """{"collection":"legacy","revision":1,"payload":${JsonHelper.json.encodeToString(legacyPayload)}}"""
+                "/v1/encrypted_sync/playbackSpeeds" -> if (exchange.requestMethod == "GET") {
+                    200 to """{"collection":"playbackSpeeds","revision":0,"payload":null}"""
+                } else {
+                    uploaded = JsonHelper.json.parseToJsonElement(
+                        exchange.requestBody.bufferedReader().readText()
+                    ).jsonObject.getValue("payload").jsonPrimitive.content
+                    409 to "conflict"
+                }
+                else -> error("Unexpected request: ${exchange.requestURI.path}")
+            }
+            val bytes = body.toByteArray()
+            exchange.responseHeaders.add("Content-Type", "application/json")
+            exchange.sendResponseHeaders(status, bytes.size.toLong())
+            exchange.responseBody.use { it.write(bytes) }
+        }
+        server.start()
+        try {
+            val api = Retrofit.Builder()
+                .baseUrl("http://127.0.0.1:${server.address.port}/")
+                .addConverterFactory(JsonHelper.json.asConverterFactory("application/json".toMediaType()))
+                .build()
+                .create<LibreTubeSyncServerApi>()
+
+            EncryptedSyncServerUserDataRepository(api, crypto).migrateLegacyData()
+
+            assertEquals(speeds, crypto.decrypt(requireNotNull(uploaded)))
         } finally {
             server.stop(0)
         }
