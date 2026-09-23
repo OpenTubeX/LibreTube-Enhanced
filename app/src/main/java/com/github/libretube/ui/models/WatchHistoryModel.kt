@@ -26,6 +26,8 @@ private sealed class WatchHistoryPage {
 class WatchHistoryModel : ViewModel() {
     private val _filteredWatchHistory = MutableLiveData<List<WatchHistoryEntry>>()
     val filteredWatchHistory: LiveData<List<WatchHistoryEntry>> = _filteredWatchHistory
+    private val _isLoadingFirstPage = MutableLiveData(true)
+    val isLoadingFirstPage: LiveData<Boolean> = _isLoadingFirstPage
 
     private var nextHistoryPage: WatchHistoryPage = WatchHistoryPage.First
     private var fetchJob: Job? = null
@@ -53,6 +55,7 @@ class WatchHistoryModel : ViewModel() {
             selectedStatus.collect {
                 fetchJob?.cancel()
                 nextHistoryPage = WatchHistoryPage.First
+                _isLoadingFirstPage.value = true
                 _filteredWatchHistory.value = emptyList()
                 fetchNextPage()
             }
@@ -91,6 +94,7 @@ class WatchHistoryModel : ViewModel() {
                 WatchHistoryPage.HasNext(nextCursor)
             }
             _filteredWatchHistory.value = _filteredWatchHistory.value.orEmpty() + watchHistoryItems
+            _isLoadingFirstPage.value = false
         }
     }
 

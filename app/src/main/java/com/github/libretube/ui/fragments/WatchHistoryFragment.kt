@@ -76,17 +76,6 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment(R.layout.fragment_watc
             viewModel.removeFromHistory(item)
         }
 
-        // observe changes to indicate if the history is empty
-        watchHistoryAdapter.registerAdapterDataObserver(object :
-            RecyclerView.AdapterDataObserver() {
-            override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) {
-                if (watchHistoryAdapter.itemCount == 0) {
-                    binding.watchHistoryRecView.isGone = true
-                    binding.historyEmpty.isVisible = true
-                }
-            }
-        })
-
         binding.watchHistoryRecView.adapter = watchHistoryAdapter
 
         // manually restore the recyclerview state due to https://github.com/material-components/material-components-android/issues/3473
@@ -155,10 +144,7 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment(R.layout.fragment_watc
         }
 
         viewModel.filteredWatchHistory.observe(viewLifecycleOwner) { history ->
-            binding.historyEmpty.isGone = history.isNotEmpty()
-            binding.watchHistoryRecView.isVisible = history.isNotEmpty()
-            binding.clear.isVisible = history.isNotEmpty()
-            binding.playAll.isVisible = history.isNotEmpty()
+            updateHistoryVisibility()
 
             watchHistoryAdapter.submitList(history) {
                 if (_binding?.watchHistoryRecView?.canScrollVertically(1) == false) {
@@ -167,6 +153,9 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment(R.layout.fragment_watc
             }
 
             binding.clear.isEnabled = history.isNotEmpty()
+        }
+        viewModel.isLoadingFirstPage.observe(viewLifecycleOwner) {
+            updateHistoryVisibility()
         }
 
         binding.watchHistoryRecView.addOnBottomReachedListener(prefetchDistance = 20) {
@@ -180,6 +169,17 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment(R.layout.fragment_watc
                 binding.clear.isEnabled = hasItems
             }
         }
+    }
+
+    private fun updateHistoryVisibility() {
+        val hasHistory = !viewModel.filteredWatchHistory.value.isNullOrEmpty()
+        val isLoading = viewModel.isLoadingFirstPage.value == true
+
+        binding.historyLoading.isVisible = isLoading
+        binding.historyEmpty.isVisible = !isLoading && !hasHistory
+        binding.watchHistoryRecView.isVisible = !isLoading && hasHistory
+        binding.clear.isVisible = !isLoading && hasHistory
+        binding.playAll.isVisible = !isLoading && hasHistory
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
