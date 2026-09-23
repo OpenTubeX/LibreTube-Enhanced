@@ -245,6 +245,7 @@
     <string name="irreversible">Are you sure? This can\'t be undone!</string>
     <string name="history_empty">No history yet.</string>
     <string name="loading_history">Loading history</string>
+    <string name="history_load_error">Could not load history.</string>
     <string name="most_recent">Newest</string>
     <string name="least_recent">Oldest</string>
     <string name="most_views">Most views</string>

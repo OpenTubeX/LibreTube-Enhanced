@@ -1,5 +1,6 @@
 package com.github.libretube.ui.models
 
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -11,6 +12,7 @@ import com.github.libretube.enums.WatchHistoryStatus
 import com.github.libretube.extensions.toID
 import com.github.libretube.helpers.PreferenceHelper
 import com.github.libretube.repo.UserDataRepositoryHelper
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,6 +30,8 @@ class WatchHistoryModel : ViewModel() {
     val filteredWatchHistory: LiveData<List<WatchHistoryEntry>> = _filteredWatchHistory
     private val _isLoadingFirstPage = MutableLiveData(true)
     val isLoadingFirstPage: LiveData<Boolean> = _isLoadingFirstPage
+    private val _loadError = MutableLiveData(false)
+    val loadError: LiveData<Boolean> = _loadError
 
     private var nextHistoryPage: WatchHistoryPage = WatchHistoryPage.First
     private var fetchJob: Job? = null
@@ -56,6 +60,7 @@ class WatchHistoryModel : ViewModel() {
                 fetchJob?.cancel()
                 nextHistoryPage = WatchHistoryPage.First
                 _isLoadingFirstPage.value = true
+                _loadError.value = false
                 _filteredWatchHistory.value = emptyList()
                 fetchNextPage()
             }
@@ -65,37 +70,55 @@ class WatchHistoryModel : ViewModel() {
     fun fetchNextPage() {
         if (nextHistoryPage == WatchHistoryPage.AllLoaded) return
         if (fetchJob?.isActive == true) return
+        if (_loadError.value == true) return
 
+        val isFirstPage = nextHistoryPage == WatchHistoryPage.First
         fetchJob = viewModelScope.launch {
-            val (watchHistoryItems, nextCursor) = withContext(Dispatchers.IO) {
-                UserDataRepositoryHelper.userDataRepository.getWatchHistory(
-                    pageSize = HISTORY_PAGE_SIZE,
-                    watchedState = selectedStatus.value,
-                    cursor = (nextHistoryPage as? WatchHistoryPage.HasNext)?.nextCursor
-                )
-            }
-            val downloaded = withContext(Dispatchers.IO) {
-                DatabaseHolder.Database.downloadDao()
-                    .areVideosDownloaded(watchHistoryItems.map { it.video.url!!.toID() })
-            }
-
-            watchHistoryItems.forEachIndexed { index, item ->
-                val videoId = item.video.url!!.toID()
-                if (downloaded[index]) {
-                    downloadedVideoIds += videoId
-                } else {
-                    downloadedVideoIds -= videoId
+            try {
+                val (watchHistoryItems, nextCursor) = withContext(Dispatchers.IO) {
+                    UserDataRepositoryHelper.userDataRepository.getWatchHistory(
+                        pageSize = HISTORY_PAGE_SIZE,
+                        watchedState = selectedStatus.value,
+                        cursor = (nextHistoryPage as? WatchHistoryPage.HasNext)?.nextCursor
+                    )
                 }
-                watchPositions[videoId] = item.metadata.positionMillis
+                val downloaded = withContext(Dispatchers.IO) {
+                    DatabaseHolder.Database.downloadDao()
+                        .areVideosDownloaded(watchHistoryItems.map { it.video.url!!.toID() })
+                }
+
+                watchHistoryItems.forEachIndexed { index, item ->
+                    val videoId = item.video.url!!.toID()
+                    if (downloaded[index]) {
+                        downloadedVideoIds += videoId
+                    } else {
+                        downloadedVideoIds -= videoId
+                    }
+                    watchPositions[videoId] = item.metadata.positionMillis
+                }
+                nextHistoryPage = if (nextCursor == null) {
+                    WatchHistoryPage.AllLoaded
+                } else {
+                    WatchHistoryPage.HasNext(nextCursor)
+                }
+                _filteredWatchHistory.value = _filteredWatchHistory.value.orEmpty() + watchHistoryItems
+                if (isFirstPage) _isLoadingFirstPage.value = false
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (!isFirstPage) throw e
+                Log.e("WatchHistoryModel", "Failed to load history", e)
+                _loadError.value = true
+                _isLoadingFirstPage.value = false
             }
-            nextHistoryPage = if (nextCursor == null) {
-                WatchHistoryPage.AllLoaded
-            } else {
-                WatchHistoryPage.HasNext(nextCursor)
-            }
-            _filteredWatchHistory.value = _filteredWatchHistory.value.orEmpty() + watchHistoryItems
-            _isLoadingFirstPage.value = false
         }
+    }
+
+    fun retryFirstPage() {
+        if (nextHistoryPage != WatchHistoryPage.First) return
+        _isLoadingFirstPage.value = true
+        _loadError.value = false
+        fetchNextPage()
     }
 
     fun isVideoDownloaded(videoId: String) = videoId in downloadedVideoIds

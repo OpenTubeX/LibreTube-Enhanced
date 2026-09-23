@@ -157,6 +157,10 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment(R.layout.fragment_watc
         viewModel.isLoadingFirstPage.observe(viewLifecycleOwner) {
             updateHistoryVisibility()
         }
+        viewModel.loadError.observe(viewLifecycleOwner) {
+            updateHistoryVisibility()
+        }
+        binding.retryHistory.setOnClickListener { viewModel.retryFirstPage() }
 
         binding.watchHistoryRecView.addOnBottomReachedListener(prefetchDistance = 20) {
             viewModel.fetchNextPage()
@@ -174,9 +178,11 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment(R.layout.fragment_watc
     private fun updateHistoryVisibility() {
         val hasHistory = !viewModel.filteredWatchHistory.value.isNullOrEmpty()
         val isLoading = viewModel.isLoadingFirstPage.value == true
+        val hasError = viewModel.loadError.value == true
 
         binding.historyLoading.isVisible = isLoading
-        binding.historyEmpty.isVisible = !isLoading && !hasHistory
+        binding.historyError.isVisible = !isLoading && hasError
+        binding.historyEmpty.isVisible = !isLoading && !hasError && !hasHistory
         binding.watchHistoryRecView.isVisible = !isLoading && hasHistory
         binding.clear.isVisible = !isLoading && hasHistory
         binding.playAll.isVisible = !isLoading && hasHistory
