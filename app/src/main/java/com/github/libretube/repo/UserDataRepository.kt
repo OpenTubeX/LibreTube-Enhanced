@@ -28,6 +28,7 @@ interface UserDataRepository {
 
     suspend fun login(username: String, password: String): String = ""
     suspend fun register(username: String, password: String): String = ""
+    suspend fun validateRegistration(password: String, privacyPassphrase: String) = Unit
     suspend fun prepareSync(token: String, password: String, privacyPassphrase: String) = Unit
     suspend fun deleteAccount(password: String) = Unit
 

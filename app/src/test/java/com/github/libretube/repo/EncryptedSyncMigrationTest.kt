@@ -39,9 +39,13 @@ class EncryptedSyncMigrationTest {
                 }
                 path == "/v1/subscriptions/" ->
                     """[{"id":"UC123","name":"Channel","avatar":null,"verified":false}]"""
+                path == "/v1/watch_history/" -> {
+                    assertTrue(exchange.requestURI.query.contains("page_size=100"))
+                    assertTrue(exchange.requestURI.query.contains("pageSize=100"))
+                    "[]"
+                }
                 path in setOf(
-                    "/v1/playlists/", "/v1/watch_history/", "/v1/subscriptions/groups/",
-                    "/v1/playlist_bookmarks/"
+                    "/v1/playlists/", "/v1/subscriptions/groups/", "/v1/playlist_bookmarks/"
                 ) -> "[]"
                 else -> error("Unexpected request: $path")
             }

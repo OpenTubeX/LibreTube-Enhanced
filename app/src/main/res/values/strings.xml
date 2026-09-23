@@ -444,11 +444,8 @@
     <string name="load_data_from">Load YouTube data from</string>
     <string name="load_data_from_local">Directly from YouTube</string>
     <string name="load_data_from_piped">via Piped (deprecated)</string>
-    <string name="libretube_sync_server">LibreTube sync server</string>
     <string name="opentubex_sync_server">OpenTubeX sync server</string>
     <string name="data_synchronization">Data synchronization</string>
-    <string name="sync_server_type">Sync user data (subscriptions, playlists) via</string>
-    <string name="sync_server_url">URL to LibreTube sync server</string>
     <string name="sync_server_url_label">Sync server URL</string>
     <string name="sync_server_type_label">Sync user data via</string>
     <string name="export">Export</string>
@@ -552,7 +549,6 @@
     <string name="missing_auth_falling_back">Not logged in. Data synchronization turned off.</string>
     <string name="sync_type_summary_none">Store all user data offline within the app. That means that you can\'t synchronize data between your devices, but might be the right choice if you only use a single device or don\'t care about syncing between devices.</string>
     <string name="sync_type_summary_sync_server">Sync subscriptions, playlists, and history through %1$s. Servers with encrypted sync require a separate privacy passphrase; your data is encrypted before upload.</string>
-    <string name="sync_type_summary_libretube">Sync subscriptions, playlists, and history through %1$s. Servers with encrypted sync require a separate privacy passphrase; your data is encrypted before upload.</string>
     <string name="sync_privacy_passphrase">Privacy passphrase (for encrypted sync)</string>
     <string name="sync_type_summary_piped">Experts only, deprecated:\nStore playlists and subscriptions data on Piped (%1$s). As Piped doesn\'t have any public instances anymore, you have to be hosting your own Piped instance.</string>
     <string name="switch_sync_type_warning">If you previously used a different sync type, please take a backup of your subscriptions and playlists first. You can then switch the sync type in the instance settings and re-import your data from the backup.</string>

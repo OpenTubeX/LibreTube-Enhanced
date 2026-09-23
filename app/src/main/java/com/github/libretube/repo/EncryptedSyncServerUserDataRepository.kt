@@ -93,6 +93,8 @@ class EncryptedSyncServerUserDataRepository internal constructor(
 
     override suspend fun login(username: String, password: String) = account.login(username, password)
     override suspend fun register(username: String, password: String) = account.register(username, password)
+    override suspend fun validateRegistration(password: String, privacyPassphrase: String) =
+        account.validateRegistration(password, privacyPassphrase)
     override suspend fun prepareSync(token: String, password: String, privacyPassphrase: String) =
         account.prepareSync(token, password, privacyPassphrase)
     override suspend fun deleteAccount(password: String) = account.deleteAccount(password)
@@ -114,7 +116,6 @@ class EncryptedSyncServerUserDataRepository internal constructor(
             val data = crypto.decrypt(payload)
             return response.revision to JsonHelper.json.decodeFromJsonElement(ListSerializer(serializer), data)
         }
-        check(response.revision == 0L) { "Encrypted sync collection has no data" }
         val manifest = api.getEncryptedSyncManifest()
         if (manifest.legacyEncryptedData) {
             val legacyPayload = api.getLegacyEncryptedSync().payload
@@ -158,7 +159,13 @@ class EncryptedSyncServerUserDataRepository internal constructor(
 
     private suspend fun legacySubscriptions() = api.getSubscriptions()
     private suspend fun legacyPlaylists(): List<PlaylistResponse> =
-        api.getPlaylists().map { api.getPlaylist(it.id) }
+        api.getPlaylists().mapNotNull {
+            try {
+                api.getPlaylist(it.id)
+            } catch (error: HttpException) {
+                if (error.code() == 404) null else throw error
+            }
+        }
     private suspend fun legacyHistory(): List<ExtendedWatchHistoryItem> {
         val entries = mutableListOf<ExtendedWatchHistoryItem>()
         var page = 1

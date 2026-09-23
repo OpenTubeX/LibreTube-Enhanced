@@ -68,7 +68,9 @@ object RetrofitInstance {
                 request.addHeader(key, value)
             }
 
-            val syncTransfer = interceptorChain.request().url.encodedPath.contains("/v1/encrypted_sync")
+            val path = interceptorChain.request().url.encodedPath
+            val syncTransfer = path.contains("/v1/encrypted_sync") ||
+                path.contains("/v1/watch_history/") || path.contains("/v1/playlists/")
             val chain = if (syncTransfer) {
                 interceptorChain.withReadTimeout(5, TimeUnit.MINUTES)
                     .withWriteTimeout(5, TimeUnit.MINUTES)

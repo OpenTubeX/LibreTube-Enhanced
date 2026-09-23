@@ -85,6 +85,7 @@ internal class EncryptedSyncCrypto private constructor(
         } else {
             padded
         }
+        require(documentBytes.size <= MAX_DOCUMENT_BYTES) { "Sync document is too large" }
         val document = JsonHelper.json.parseToJsonElement(documentBytes.toString(Charsets.UTF_8)).jsonObject
         require(document["version"]?.jsonPrimitive?.content == "1") { "Unsupported sync document" }
         return document["data"] ?: document // Older OpenTubeX single-document sync.
@@ -92,6 +93,7 @@ internal class EncryptedSyncCrypto private constructor(
 
     fun encrypt(data: JsonElement): String {
         val document = "{\"version\":1,\"data\":${data}}".toByteArray(Charsets.UTF_8)
+        require(document.size <= MAX_DOCUMENT_BYTES) { "Sync document is too large" }
         val compressed = ByteArrayOutputStream().use { output ->
             GZIPOutputStream(output).use { it.write(document) }
             output.toByteArray()

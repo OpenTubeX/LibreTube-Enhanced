@@ -30,7 +30,7 @@ class EncryptedSyncCryptoTest {
         assertEquals("PBKDF2", parsed.getValue("kdf").jsonObject.getValue("name").jsonPrimitive.content)
         assertEquals("AES-GCM", parsed.getValue("cipher").jsonObject.getValue("name").jsonPrimitive.content)
         assertEquals("gzip", parsed.getValue("compression").jsonObject.getValue("name").jsonPrimitive.content)
-        assertTrue(Base64.getDecoder().decode(parsed.getValue("ciphertext").jsonPrimitive.content).size >= 65552)
+        assertTrue(Base64.getDecoder().decode(parsed.getValue("ciphertext").jsonPrimitive.content).size >= 64 * 1024 + 16)
         assertEquals(data, crypto.decrypt(envelope))
     }
 

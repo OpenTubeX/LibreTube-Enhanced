@@ -135,7 +135,8 @@ interface LibreTubeSyncServerApi {
     suspend fun getWatchHistory(
         @Query("page") page: Int,
         @Query("page_size") pageSize: Int,
-        @Query("state") state: String?
+        @Query("state") state: String?,
+        @Query("pageSize") legacyPageSize: Int = pageSize
     ): List<ExtendedWatchHistoryItem>
 
     @DELETE("v1/watch_history/{video_id}")

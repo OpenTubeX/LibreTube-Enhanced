@@ -545,17 +545,13 @@
     <string name="load_data_from">YouTube-Daten laden von</string>
     <string name="load_data_from_local">Direkt von YouTube</string>
     <string name="load_data_from_piped">über Piped (veraltet)</string>
-    <string name="libretube_sync_server">LibreTube-Synchronisationsserver</string>
     <string name="data_synchronization">Datensynchronisation</string>
-    <string name="sync_server_url">URL zum LibreTube-Synchronisationsserver</string>
     <string name="export">Exportieren</string>
     <string name="missing_auth_falling_back">Nicht angemeldet. Datensynchronisation ausgeschaltet.</string>
     <string name="welcome">Willkommen bei LibreTube! Um loszulegen, wählen Sie bitte unten einen Synchronisierungsmodus aus, um zu entscheiden, ob Sie Ihre Benutzerdaten geräteübergreifend synchronisieren möchten.</string>
     <string name="choose_instance">Bitte wählen Sie zunächst eine Instanz aus!</string>
     <string name="choose_instance_long">Bitte wählen Sie unten eine Piped-Instanz aus, die Sie verwenden möchten. Die Piped-Instanz fungiert als Vermittler zwischen Ihnen und YouTube. Diese Instanzen befinden sich an verschiedenen physischen Standorten – erkennbar an den jeweiligen Landesflaggen. Instanzen, die physisch näher bei Ihnen liegen, sind wahrscheinlich schneller als solche, die weiter entfernt sind. Sie können die verwendete Instanz jederzeit in den Einstellungen ändern.</string>
-    <string name="sync_server_type">Benutzerdaten (Abonnements, Wiedergabelisten) synchronisieren über</string>
     <string name="sync_type_summary_none">Speichern Sie alle Benutzerdaten offline in der App. Das bedeutet, dass Sie keine Daten zwischen Ihren Geräten synchronisieren können. Dies könnte jedoch die richtige Wahl sein, wenn Sie nur ein einziges Gerät verwenden oder keine Wert auf die Synchronisierung zwischen Geräten legen.</string>
-    <string name="sync_type_summary_libretube">Speichern Sie Wiedergabelisten und Abonnementdaten auf dem Synchronisierungsserver von LibreTube (%1$s). So können Sie sich auf jedem beliebigen anderen Gerät bei Ihrem Konto anmelden und haben Zugriff auf Ihre Abonnements und Wiedergabelisten. Datenschutzhinweis: Nutzerdaten werden serverseitig pseudonymisiert, jedoch nicht durchgehend verschlüsselt. Auf Wunsch können Sie auch eine eigene Version des Servers betreiben, in der Regel sollte der offizielle Server jedoch völlig ausreichen.</string>
     <string name="sync_type_summary_sync_server">Synchronisiere Abos, Wiedergabelisten und Verlauf über %1$s. Server mit verschlüsselter Synchronisierung erfordern eine separate Datenschutz-Passphrase; deine Daten werden vor dem Hochladen verschlüsselt.</string>
     <string name="sync_privacy_passphrase">Datenschutz-Passphrase (für verschlüsselte Synchronisierung)</string>
     <string name="opentubex_sync_server">OpenTubeX-Synchronisierungsserver</string>

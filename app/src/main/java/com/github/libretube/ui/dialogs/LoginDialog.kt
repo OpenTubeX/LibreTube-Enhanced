@@ -68,6 +68,7 @@ class LoginDialog : DialogFragment() {
         lifecycleScope.launch(Dispatchers.IO) {
             @Suppress("DEPRECATION") val token = try {
                 if (createNewAccount) {
+                    UserDataRepositoryHelper.userDataRepository.validateRegistration(password, privacyPassphrase)
                     UserDataRepositoryHelper.userDataRepository.register(username, password)
                 } else {
                     UserDataRepositoryHelper.userDataRepository.login(username, password)

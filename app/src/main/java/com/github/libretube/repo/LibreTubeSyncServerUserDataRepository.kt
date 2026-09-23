@@ -3,6 +3,7 @@ package com.github.libretube.repo
 import com.github.libretube.api.RetrofitInstance
 import com.github.libretube.api.JsonHelper
 import com.github.libretube.api.ltsync.EncryptedSyncCrypto
+import com.github.libretube.api.ltsync.LibreTubeSyncServerApi
 import com.github.libretube.api.ltsync.obj.HealthResponse
 import com.github.libretube.api.ltsync.obj.Channel
 import com.github.libretube.api.ltsync.obj.CreatePlaylist
@@ -68,21 +69,36 @@ class LibreTubeSyncServerUserDataRepository : UserDataRepository {
         }
     }
 
-    override suspend fun prepareSync(token: String, password: String, privacyPassphrase: String) {
-        val api = RetrofitInstance.buildRetrofitInstance<com.github.libretube.api.ltsync.LibreTubeSyncServerApi>(
-            baseUrl,
-            headersAccessor = { mapOf("Authorization" to token) }
-        )
+    override suspend fun validateRegistration(password: String, privacyPassphrase: String) {
+        validatePrivacyPassphrase(password, privacyPassphrase, supportsEncryptedSync(api))
+    }
+
+    private suspend fun supportsEncryptedSync(api: LibreTubeSyncServerApi): Boolean {
         val health = api.health().string().trim()
-        val capabilities = if (health == "OK") null else
-            JsonHelper.json.decodeFromString<HealthResponse>(health).capabilities
-        if (capabilities?.encryptedSync != 1) {
+        return health != "OK" &&
+            JsonHelper.json.decodeFromString<HealthResponse>(health).capabilities.encryptedSync == 1
+    }
+
+    private fun validatePrivacyPassphrase(password: String, privacyPassphrase: String, encrypted: Boolean) {
+        if (!encrypted) {
             require(privacyPassphrase.isEmpty()) { "This server does not support encrypted sync" }
-            PreferenceHelper.setSyncPrivacy("", "")
             return
         }
         require(privacyPassphrase.length >= 12) { "Privacy passphrase must have at least 12 characters" }
         require(privacyPassphrase != password) { "Privacy passphrase must differ from account password" }
+    }
+
+    override suspend fun prepareSync(token: String, password: String, privacyPassphrase: String) {
+        val api = RetrofitInstance.buildRetrofitInstance<LibreTubeSyncServerApi>(
+            baseUrl,
+            headersAccessor = { mapOf("Authorization" to token) }
+        )
+        val encrypted = supportsEncryptedSync(api)
+        validatePrivacyPassphrase(password, privacyPassphrase, encrypted)
+        if (!encrypted) {
+            PreferenceHelper.setSyncPrivacy("", "")
+            return
+        }
         val manifest = api.getEncryptedSyncManifest()
         var payload: String? = null
         for (entry in manifest.collections) {
