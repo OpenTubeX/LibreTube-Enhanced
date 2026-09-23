@@ -90,7 +90,7 @@ class LibreTubeSyncServerUserDataRepository : UserDataRepository {
     }
 
     override suspend fun prepareSync(token: String, password: String, privacyPassphrase: String) {
-        val localSpeeds = PlayerHelper.beginChannelSpeedSync()
+        val localSpeeds = PlayerHelper.beginChannelSpeedSync(token)
         try {
             val api = RetrofitInstance.buildRetrofitInstance<LibreTubeSyncServerApi>(
                 baseUrl,

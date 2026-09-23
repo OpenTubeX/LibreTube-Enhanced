@@ -39,7 +39,7 @@ class ChannelSpeedLoginTest {
         } as SharedPreferences
 
         try {
-            assertEquals(mapOf("deleted" to 2f), PlayerHelper.beginChannelSpeedSync())
+            assertEquals(mapOf("deleted" to 2f), PlayerHelper.beginChannelSpeedSync("new-token"))
             PlayerHelper.saveChannelPlaybackSpeed("edited", 1.75f)
             PlayerHelper.removeChannelPlaybackSpeed("deleted")
             PlayerHelper.applySyncedChannelSpeeds(mapOf("deleted" to 1.25f, "remote" to 1.5f))

@@ -130,9 +130,10 @@ object PlayerHelper {
         channelSpeedWake.trySend(Unit)
     }
 
-    fun beginChannelSpeedSync(): Map<String, Float> = synchronized(channelSpeedLock) {
+    fun beginChannelSpeedSync(token: String): Map<String, Float> = synchronized(channelSpeedLock) {
         loginSpeedEdits = synchronized(pendingChannelSpeeds) {
-            pendingChannelSpeeds.mapValues { it.value.second }.toMutableMap()
+            pendingChannelSpeeds.filterValues { it.first == token }
+                .mapValues { it.value.second }.toMutableMap()
         }
         getAllSavedChannelSpeeds()
     }
