@@ -35,6 +35,8 @@ import com.github.libretube.ui.models.CommonPlayerViewModel
 import com.github.libretube.ui.models.WatchHistoryModel
 import com.github.libretube.util.PlayingQueue
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.snackbar.Snackbar
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -45,6 +47,7 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment(R.layout.fragment_watc
 
     private val commonPlayerViewModel: CommonPlayerViewModel by activityViewModels()
     private var recyclerViewState: Parcelable? = null
+    private var pageErrorSnackbar: Snackbar? = null
 
     private val viewModel: WatchHistoryModel by viewModels()
 
@@ -76,17 +79,6 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment(R.layout.fragment_watc
             viewModel.removeFromHistory(item)
         }
 
-        // observe changes to indicate if the history is empty
-        watchHistoryAdapter.registerAdapterDataObserver(object :
-            RecyclerView.AdapterDataObserver() {
-            override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) {
-                if (watchHistoryAdapter.itemCount == 0) {
-                    binding.watchHistoryRecView.isGone = true
-                    binding.historyEmpty.isVisible = true
-                }
-            }
-        })
-
         binding.watchHistoryRecView.adapter = watchHistoryAdapter
 
         // manually restore the recyclerview state due to https://github.com/material-components/material-components-android/issues/3473
@@ -110,16 +102,27 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment(R.layout.fragment_watc
                     selected[index] = newValue
                 }
                 .setPositiveButton(R.string.okay) { _, _ ->
+                    pageErrorSnackbar?.dismiss()
+                    pageErrorSnackbar = null
+                    viewModel.cancelPendingHistoryPage()
                     binding.watchHistoryRecView.isGone = true
                     binding.historyEmpty.isVisible = true
                     binding.clear.isVisible = true
                     binding.playAll.isGone = true
                     binding.statusFilterChips.isGone = true
 
-                    lifecycleScope.launch(Dispatchers.IO) {
+                    lifecycleScope.launch {
                         try {
-                            UserDataRepositoryHelper.userDataRepository.clearWatchHistory()
+                            withContext(Dispatchers.IO) {
+                                UserDataRepositoryHelper.userDataRepository.clearWatchHistory()
+                            }
+                            viewModel.onHistoryCleared()
+                        } catch (e: CancellationException) {
+                            throw e
                         } catch (e: Exception) {
+                            _binding?.statusFilterChips?.isVisible = true
+                            if (_binding != null) updateHistoryVisibility()
+                            viewModel.fetchNextPage()
                             context?.toastFromMainDispatcher(e.message.orEmpty())
                         }
                     }
@@ -155,10 +158,7 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment(R.layout.fragment_watc
         }
 
         viewModel.filteredWatchHistory.observe(viewLifecycleOwner) { history ->
-            binding.historyEmpty.isGone = history.isNotEmpty()
-            binding.watchHistoryRecView.isVisible = history.isNotEmpty()
-            binding.clear.isVisible = history.isNotEmpty()
-            binding.playAll.isVisible = history.isNotEmpty()
+            updateHistoryVisibility()
 
             watchHistoryAdapter.submitList(history) {
                 if (_binding?.watchHistoryRecView?.canScrollVertically(1) == false) {
@@ -168,6 +168,13 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment(R.layout.fragment_watc
 
             binding.clear.isEnabled = history.isNotEmpty()
         }
+        viewModel.isLoadingFirstPage.observe(viewLifecycleOwner) {
+            updateHistoryVisibility()
+        }
+        viewModel.loadError.observe(viewLifecycleOwner) {
+            updateHistoryVisibility()
+        }
+        binding.retryHistory.setOnClickListener { viewModel.retryPage() }
 
         binding.watchHistoryRecView.addOnBottomReachedListener(prefetchDistance = 20) {
             viewModel.fetchNextPage()
@@ -182,6 +189,33 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment(R.layout.fragment_watc
         }
     }
 
+    private fun updateHistoryVisibility() {
+        val hasHistory = !viewModel.filteredWatchHistory.value.isNullOrEmpty()
+        val isLoading = viewModel.isLoadingFirstPage.value == true
+        val hasError = viewModel.loadError.value == true
+
+        binding.historyLoading.isVisible = isLoading
+        binding.historyError.isVisible = !isLoading && hasError && !hasHistory
+        binding.historyEmpty.isVisible = !isLoading && !hasError && !hasHistory
+        binding.watchHistoryRecView.isVisible = !isLoading && hasHistory
+        binding.clear.isVisible = !isLoading && hasHistory
+        binding.playAll.isVisible = !isLoading && hasHistory
+
+        if (!isLoading && hasError && hasHistory && pageErrorSnackbar == null) {
+            pageErrorSnackbar = Snackbar.make(binding.root, R.string.history_load_error, Snackbar.LENGTH_INDEFINITE)
+                .setAction(R.string.retry) { viewModel.retryPage() }
+                .addCallback(object : Snackbar.Callback() {
+                    override fun onDismissed(transientBottomBar: Snackbar?, event: Int) {
+                        if (pageErrorSnackbar === transientBottomBar) pageErrorSnackbar = null
+                    }
+                })
+                .also { it.show() }
+        } else if (isLoading || !hasError || !hasHistory) {
+            pageErrorSnackbar?.dismiss()
+            pageErrorSnackbar = null
+        }
+    }
+
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         // manually restore the recyclerview state due to https://github.com/material-components/material-components-android/issues/3473
@@ -189,6 +223,8 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment(R.layout.fragment_watc
     }
 
     override fun onDestroyView() {
+        pageErrorSnackbar?.dismiss()
+        pageErrorSnackbar = null
         super.onDestroyView()
         _binding = null
     }

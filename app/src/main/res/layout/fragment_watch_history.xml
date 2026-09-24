@@ -12,7 +12,7 @@
         android:layout_height="match_parent"
         android:gravity="center"
         android:orientation="vertical"
-        android:visibility="visible">
+        android:visibility="gone">
 
         <ImageView
             android:layout_width="100dp"
@@ -28,6 +28,29 @@
             android:text="@string/history_empty"
             android:textSize="20sp"
             android:textStyle="bold" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/history_error"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:gravity="center"
+            android:text="@string/history_load_error" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/retry_history"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/retry" />
     </LinearLayout>
 
     <androidx.coordinatorlayout.widget.CoordinatorLayout
@@ -84,6 +107,16 @@
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
+    <com.google.android.material.loadingindicator.LoadingIndicator
+        android:id="@+id/history_loading"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:contentDescription="@string/loading_history"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/clear"
         style="?attr/floatingActionButtonSmallSecondaryStyle"
@@ -95,6 +128,7 @@
         android:contentDescription="@string/clear_history"
         android:src="@drawable/ic_delete"
         android:tooltipText="@string/clear_history"
+        android:visibility="gone"
         app:layout_constraintBottom_toTopOf="@+id/play_all"
         app:layout_constraintEnd_toEndOf="@+id/history_empty"
         tools:targetApi="o"
@@ -109,6 +143,7 @@
         android:contentDescription="@string/play_all"
         android:src="@drawable/ic_play"
         android:tooltipText="@string/play_all"
+        android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="@+id/history_empty"
         app:layout_constraintEnd_toEndOf="parent"
         tools:visibility="visible" />
