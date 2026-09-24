@@ -36,6 +36,7 @@ import com.github.libretube.ui.models.WatchHistoryModel
 import com.github.libretube.util.PlayingQueue
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -116,9 +117,12 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment(R.layout.fragment_watc
                                 UserDataRepositoryHelper.userDataRepository.clearWatchHistory()
                             }
                             viewModel.onHistoryCleared()
+                        } catch (e: CancellationException) {
+                            throw e
                         } catch (e: Exception) {
                             _binding?.statusFilterChips?.isVisible = true
                             if (_binding != null) updateHistoryVisibility()
+                            viewModel.fetchNextPage()
                             context?.toastFromMainDispatcher(e.message.orEmpty())
                         }
                     }
@@ -191,7 +195,7 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment(R.layout.fragment_watc
         val hasError = viewModel.loadError.value == true
 
         binding.historyLoading.isVisible = isLoading
-        binding.historyError.isVisible = !isLoading && hasError
+        binding.historyError.isVisible = !isLoading && hasError && !hasHistory
         binding.historyEmpty.isVisible = !isLoading && !hasError && !hasHistory
         binding.watchHistoryRecView.isVisible = !isLoading && hasHistory
         binding.clear.isVisible = !isLoading && hasHistory
