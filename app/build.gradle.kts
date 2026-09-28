@@ -76,7 +76,7 @@ android {
 
         getByName("debug") {
             isDebuggable = true
-            applicationIdSuffix = ".debug"
+            applicationIdSuffix = ".enhanced.debug"
             resValue("string", "app_name", "LibreTube-Enhanced")
         }
     }

@@ -5,12 +5,12 @@
 
 This is a fork of LibreTube in its early stages. Installable builds are published as [GitHub nightly releases](https://github.com/OpenTubeX/LibreTube-Enhanced/releases). Use [Add to Obtainium][obtainium-link] to import the repository with prereleases enabled.
 
-Nightly builds use the `com.github.libretube.debug` package, so they can be installed alongside the regular LibreTube app.
+Nightly builds use the `com.github.libretube.enhanced.debug` package, so they can be installed alongside regular LibreTube and official LibreTube nightlies.
 
 > [!IMPORTANT]
-> Builds downloaded from GitHub Actions before September 2, 2026 used temporary signing keys. Export your app data, uninstall the old debug build, and install a nightly release once. Later nightly releases can update normally through Obtainium.
+> If you installed an earlier fork nightly under `com.github.libretube.debug`, export your app data before switching. The new package installs separately and cannot update the old app. Import your data into the new nightly, then remove the old app and its Obtainium entry. Use the link above to add the new package to Obtainium.
 
-[obtainium-link]: <https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22com.github.libretube.debug%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2FOpenTubeX%2FLibreTube-Enhanced%22%2C%22author%22%3A%22OpenTubeX%22%2C%22name%22%3A%22LibreTube%20Enhanced%20Nightly%22%2C%22additionalSettings%22%3A%22%7B%5C%22includePrereleases%5C%22%3Atrue%7D%22%7D>
+[obtainium-link]: <https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22com.github.libretube.enhanced.debug%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2FOpenTubeX%2FLibreTube-Enhanced%22%2C%22author%22%3A%22OpenTubeX%22%2C%22name%22%3A%22LibreTube%20Enhanced%20Nightly%22%2C%22additionalSettings%22%3A%22%7B%5C%22includePrereleases%5C%22%3Atrue%7D%22%7D>
 
 It currently supports the following extra features:
 
