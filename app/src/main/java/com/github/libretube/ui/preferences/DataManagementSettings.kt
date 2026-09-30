@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.os.bundleOf
+import androidx.lifecycle.lifecycleScope
 import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
 import androidx.preference.Preference
@@ -11,7 +12,7 @@ import com.github.libretube.R
 import com.github.libretube.api.RetrofitInstance
 import com.github.libretube.constants.IntentData
 import com.github.libretube.constants.PreferenceKeys
-
+import com.github.libretube.db.DatabaseHolder.Database
 import com.github.libretube.enums.SyncServerType
 import com.github.libretube.extensions.toastFromMainThread
 import com.github.libretube.helpers.PreferenceHelper
@@ -22,11 +23,13 @@ import com.github.libretube.ui.dialogs.LoginDialog
 import com.github.libretube.ui.dialogs.LogoutDialog
 import com.github.libretube.ui.dialogs.SelectInstanceDialog
 import com.github.libretube.ui.views.ButtonGroupPreference
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
-class InstanceSettings : BasePreferenceFragment() {
+class DataManagementSettings : BasePreferenceFragment() {
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
-        setPreferencesFromResource(R.xml.instance_settings, rootKey)
+        setPreferencesFromResource(R.xml.account_settings, rootKey)
 
         val authInstance = findPreference<ListPreference>(PreferenceKeys.AUTH_INSTANCE)!!
 
@@ -96,6 +99,15 @@ class InstanceSettings : BasePreferenceFragment() {
             }
 
             logoutAndUpdateUI(true)
+            true
+        }
+
+        // clear search history when history is disabled
+        val searchHistory = findPreference<Preference>(PreferenceKeys.SEARCH_HISTORY_TOGGLE)
+        searchHistory?.onPreferenceChangeListener = { _, newValue ->
+            if (!(newValue as Boolean)) {
+                lifecycleScope.launch(Dispatchers.IO) { Database.searchHistoryDao().deleteAll() }
+            }
             true
         }
     }

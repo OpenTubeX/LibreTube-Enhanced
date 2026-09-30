@@ -2,17 +2,6 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <PreferenceCategory android:title="@string/mode_of_operation">
-
-        <SwitchPreferenceCompat
-            android:defaultValue="true"
-            android:icon="@drawable/ic_dislike"
-            android:summary="@string/local_ryd_summary"
-            android:title="@string/local_ryd"
-            app:key="local_return_youtube_dislikes" />
-
-    </PreferenceCategory>
-
     <PreferenceCategory android:title="@string/data_synchronization">
         <com.github.libretube.ui.views.ButtonGroupPreference
             android:icon="@drawable/ic_region"
@@ -50,6 +39,33 @@
             android:icon="@drawable/ic_reset"
             app:key="delete_account"
             app:title="@string/deleteAccount" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/history">
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:icon="@drawable/ic_history_filled"
+            android:summary="@string/search_history_summary"
+            app:key="search_history_toggle"
+            app:title="@string/search_history" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:icon="@drawable/ic_time_outlined"
+            android:summary="@string/watch_history_summary"
+            app:key="watch_history_toggle"
+            app:title="@string/watch_history" />
+
+        <ListPreference
+            android:defaultValue="always"
+            android:entries="@array/watchPosition"
+            android:entryValues="@array/watchPositionValues"
+            android:icon="@drawable/ic_play_filled"
+            app:key="watch_positions"
+            app:title="@string/watch_positions_title"
+            app:useSimpleSummaryProvider="true" />
 
     </PreferenceCategory>
 

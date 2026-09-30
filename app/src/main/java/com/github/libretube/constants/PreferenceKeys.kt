@@ -18,7 +18,6 @@ object PreferenceKeys {
     const val ORIENTATION = "orientation"
     const val NAVBAR_ITEMS = "navbar_items"
     const val START_FRAGMENT = "start_fragment"
-    const val UNLIMITED_SEARCH_HISTORY = "unlimited_search_history"
     const val AUDIO_ONLY_MODE = "audio_only_mode"
 
     // Appearance
@@ -110,11 +109,7 @@ object PreferenceKeys {
     const val AUTOMATIC_UPDATE_CHECKS = "automatic_update_checks"
     const val DATA_SAVER_MODE = "data_saver_mode_key"
     const val RESET_SETTINGS = "reset_settings"
-    const val CLEAR_SEARCH_HISTORY = "clear_search_history"
-    const val CLEAR_WATCH_HISTORY = "clear_watch_history"
-    const val CLEAR_WATCH_POSITIONS = "clear_watch_positions"
     const val SHARE_WITH_TIME_CODE = "share_with_time_code"
-    const val SELECTED_SHARE_HOST = "selected_share_host"
     const val EXTERNAL_DOWNLOAD_PROVIDER = "external_download_provider"
     const val LOCAL_RYD = "local_return_youtube_dislikes"
     const val INCLUDE_TIMESTAMP_IN_BACKUP_FILENAME = "include_timestamp_in_filename"
