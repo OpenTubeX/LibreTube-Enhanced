@@ -1,0 +1,93 @@
+name: Sync upstream
+
+# UPSTREAM_SYNC_TOKEN needs Contents, Pull requests, and Workflows write access
+# plus Checks and Commit statuses read access. A separate token lets PRs run CI.
+on:
+  schedule:
+    - cron: "23 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.repository == 'OpenTubeX/LibreTube-Enhanced'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ secrets.UPSTREAM_SYNC_TOKEN }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check authentication
+        run: |
+          if [[ -z "$GH_TOKEN" ]]; then
+            echo "::error::Set the UPSTREAM_SYNC_TOKEN repository secret before running upstream sync."
+            exit 1
+          fi
+
+      # Merge the previous PR before updating it so new upstream commits do not
+      # continually reset its checks. Repositories without native auto-merge
+      # enabled still get automatic merges on the next scheduled run.
+      - name: Merge eligible upstream pull request
+        env:
+          BASE_BRANCH: master
+        run: |
+          pr_number=$(gh pr list --repo "$GITHUB_REPOSITORY" \
+            --base "$BASE_BRANCH" --head upstream-sync --state open \
+            --json number,isCrossRepository \
+            --jq '[.[] | select(.isCrossRepository == false)][0].number // empty')
+          if [[ -z "$pr_number" ]]; then
+            exit 0
+          fi
+
+          pr=$(gh pr view "$pr_number" --repo "$GITHUB_REPOSITORY" \
+            --json url,headRefOid,isDraft,mergeStateStatus,statusCheckRollup)
+          if ! jq -e '
+            (.isDraft == false) and .mergeStateStatus == "CLEAN" and
+            all(.statusCheckRollup[];
+              .state == "SUCCESS" or
+              (.status == "COMPLETED" and
+                (.conclusion == "SUCCESS" or .conclusion == "NEUTRAL" or .conclusion == "SKIPPED")))
+          ' <<< "$pr" >/dev/null; then
+            echo "Upstream PR #$pr_number is waiting for checks, reviews, or conflict resolution."
+            exit 0
+          fi
+
+          pr_url=$(jq -r '.url' <<< "$pr")
+          head_sha=$(jq -r '.headRefOid' <<< "$pr")
+          gh pr merge "$pr_url" --merge --match-head-commit "$head_sha"
+
+      - name: Checkout fork
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: master
+          fetch-depth: 0
+          token: ${{ secrets.UPSTREAM_SYNC_TOKEN }}
+
+      - name: Prepare upstream pull request branch
+        run: |
+          git fetch --no-tags https://github.com/libre-tube/LibreTube.git master
+          # Reset only the runner's temporary checkout. The action restores the
+          # fork's base and pushes upstream-sync; merging its PR preserves fork
+          # changes and upstream commit history, including on conflicting PRs.
+          git reset --hard FETCH_HEAD
+
+      - name: Create or update upstream pull request
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ secrets.UPSTREAM_SYNC_TOKEN }}
+          base: master
+          branch: upstream-sync
+          delete-branch: true
+          title: "chore: sync master from libre-tube/LibreTube"
+          body: |
+            Sync [libre-tube/LibreTube:master](https://github.com/libre-tube/LibreTube/tree/master) into `master`.
+
+            Merge with a **merge commit** to preserve fork changes and shared upstream history.
