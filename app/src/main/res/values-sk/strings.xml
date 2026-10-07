@@ -546,4 +546,5 @@
     <string name="comment_pinned">Pripnutý</string>
     <string name="courses">Kurzy</string>
     <string name="defaults">Predvolené nastavenia</string>
+    <string name="account">Účet</string>
 </resources>
