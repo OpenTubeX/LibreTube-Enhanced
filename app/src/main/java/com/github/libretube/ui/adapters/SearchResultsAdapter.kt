@@ -187,7 +187,7 @@ class SearchResultsAdapter(
                     IntentData.channelId to item.url.toID(),
                     IntentData.channelName to item.name,
                     IntentData.isSubscribed to subscribed,
-                    IntentData.channelAvatar to item.uploaderAvatar,
+                    IntentData.channelAvatar to item.thumbnail,
                 )
                 channelOptionsSheet.show((root.context as BaseActivity).supportFragmentManager)
                 true

@@ -224,6 +224,10 @@ class MainActivity : AbstractPlayerHostActivity() {
             navigateToBottomSelectedItem(it)
         }
 
+        if (resources.configuration.smallestScreenWidthDp >= MINIMUM_SCREEN_SIZE_TABLET) {
+            fixBottomNavSelectionIndicatorWidth()
+        }
+
         if (binding.bottomNav.menu.children.none { it.itemId == startFragmentId }) deselectBottomBarItems()
 
         binding.toolbar.title = ThemeHelper.getStyledAppName(this)

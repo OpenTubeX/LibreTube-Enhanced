@@ -6,6 +6,7 @@ import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.widget.LinearLayout
 import android.widget.RadioButton
 import androidx.core.content.FileProvider
@@ -33,6 +34,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import java.io.File
+import kotlin.coroutines.cancellation.CancellationException
 
 class ShareDialog : DialogFragment() {
     private lateinit var id: String
@@ -115,20 +117,33 @@ class ShareDialog : DialogFragment() {
             .setTitle(getString(R.string.share))
             .setView(binding.root)
             .setPositiveButton(R.string.share) { _, _ ->
-                val intent = Intent(Intent.ACTION_SEND)
-                    .putExtra(Intent.EXTRA_TEXT, binding.linkPreview.text.toString())
-                    .putExtra(Intent.EXTRA_TITLE, shareData.title)
-                    .setType("text/plain")
-                    .apply {
-                        shareData.previewImageUrl?.let {
-                            val uri = runBlocking { generatePreviewUri(requireContext(), it) }
-                            clipData = ClipData.newRawUri(null, uri)
-                            data = uri
-                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        }
+                val activity = requireActivity()
+                val link = binding.linkPreview.text.toString()
+                // The dialog is dismissed immediately, so use the activity's lifecycle.
+                activity.lifecycleScope.launch {
+                    val previewUri = try {
+                        shareData.previewImageUrl?.let { generatePreviewUri(activity, it) }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Log.w("ShareDialog", "Unable to generate share preview", e)
+                        null
                     }
-                val shareIntent = Intent.createChooser(intent, getString(R.string.shareTo))
-                requireContext().startActivity(shareIntent)
+                    val intent = Intent(Intent.ACTION_SEND)
+                        .putExtra(Intent.EXTRA_TEXT, link)
+                        .putExtra(Intent.EXTRA_TITLE, shareData.title)
+                        .putExtra(Intent.EXTRA_SUBJECT, shareData.title)
+                        .setType("text/plain")
+                        .apply {
+                            if (previewUri != null) {
+                                clipData = ClipData.newRawUri(null, previewUri)
+                                setDataAndType(previewUri, "text/plain")
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                        }
+                    val shareIntent = Intent.createChooser(intent, activity.getString(R.string.shareTo))
+                    activity.startActivity(shareIntent)
+                }
             }
             .setNegativeButton(R.string.cancel, null)
             .show()

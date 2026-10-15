@@ -158,12 +158,16 @@ class SubscriptionsFragment : DynamicLayoutManagerFragment(R.layout.fragment_sub
                 when (selectedFilterGroup) {
                     FILTER_GROUP_ALL -> FeedRefresh.All
                     FILTER_GROUP_UNGROUPED -> viewModel.subscriptions.value?.let { subscriptions ->
-                        FeedRefresh.OnlySome(subscriptions.map { it.url.toID() })
-                    } ?: FeedRefresh.All // fallback if subscriptions weren't loaded yet
-                    else -> FeedRefresh.OnlySome(
-                        viewModel.groups.value?.getOrNull(selectedFilterGroup)
-                            ?.channels.orEmpty()
-                    )
+                        viewModel.groups.value?.let { groups ->
+                            val groupedChannels = groups.flatMap { it.channels }.toHashSet()
+                            FeedRefresh.OnlySome(
+                                subscriptions.map { it.url.toID() }.filterNot { it in groupedChannels }
+                            )
+                        }
+                    } ?: FeedRefresh.All // fallback if subscriptions or groups weren't loaded yet
+                    else -> viewModel.groups.value?.getOrNull(selectedFilterGroup)?.let {
+                        FeedRefresh.OnlySome(it.channels)
+                    } ?: FeedRefresh.All
                 }
             )
         }
@@ -176,8 +180,11 @@ class SubscriptionsFragment : DynamicLayoutManagerFragment(R.layout.fragment_sub
         }
 
         binding.channelGroups.setOnCheckedStateChangeListener { group, _ ->
-            selectedFilterGroup =
-                group.children.indexOfFirst { it.id == group.checkedChipId } - 1 // 0th index is "all" button
+            selectedFilterGroup = when (group.checkedChipId) {
+                binding.chipAll.id -> FILTER_GROUP_ALL
+                binding.chipUngrouped.id -> FILTER_GROUP_UNGROUPED
+                else -> group.children.indexOfFirst { it.id == group.checkedChipId } - 1
+            }
 
             lifecycleScope.launch {
                 showFeed(restoreScrollState = false)
@@ -214,7 +221,7 @@ class SubscriptionsFragment : DynamicLayoutManagerFragment(R.layout.fragment_sub
         binding.emptyFeed.isGone = true
         binding.subProgress.isVisible = true
 
-        viewModel.fetchFeed(requireContext(), forceRefresh = false)
+        viewModel.fetchFeed(requireContext(), FeedRefresh.Automatically)
         viewModel.fetchSubscriptions(requireContext())
         fetchGroups()
     }

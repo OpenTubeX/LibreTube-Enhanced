@@ -49,7 +49,7 @@ class SubscriptionChannelAdapter :
                     IntentData.channelId to subscription.url.toID(),
                     IntentData.channelName to subscription.name,
                     IntentData.isSubscribed to true,
-                    IntentData.channelName to subscription.avatar,
+                    IntentData.channelAvatar to subscription.avatar,
                 )
                 val activity = ContextHelper.unwrapActivity<BaseActivity>(root.context)
                 channelOptionsSheet.show(activity.supportFragmentManager)
