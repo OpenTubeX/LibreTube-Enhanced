@@ -18,6 +18,7 @@ import com.github.libretube.extensions.TAG
 import com.github.libretube.extensions.toastFromMainDispatcher
 import com.github.libretube.helpers.PreferenceHelper
 import com.github.libretube.repo.FeedProgress
+import com.github.libretube.repo.FeedRefresh
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -62,12 +63,12 @@ class SubscriptionsViewModel : ViewModel() {
     val groups = MutableLiveData<List<SubscriptionGroup>>()
     var groupToEdit: SubscriptionGroup? = null
 
-    fun fetchFeed(context: Context, forceRefresh: Boolean) {
+    fun fetchFeed(context: Context, refresh: FeedRefresh) {
         val sourceRevision = currentSourceRevision
         viewModelScope.launch(Dispatchers.IO) {
             if (sourceRevision != currentSourceRevision) return@launch
             val videoFeed = try {
-                SubscriptionHelper.getFeed(forceRefresh = forceRefresh) { feedProgress ->
+                SubscriptionHelper.getFeed(refresh) { feedProgress ->
                     this@SubscriptionsViewModel.feedProgress.postValue(feedProgress)
                 }
             } catch (e: CancellationException) {

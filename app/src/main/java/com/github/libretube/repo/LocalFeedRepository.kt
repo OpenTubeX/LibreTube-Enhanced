@@ -27,6 +27,7 @@ import org.schabi.newpipe.extractor.stream.StreamInfoItem
 import java.time.Duration
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.time.Duration.Companion.milliseconds
 
 class LocalFeedRepository(
     private val userDataRepository: UserDataRepository,
@@ -41,12 +42,14 @@ class LocalFeedRepository(
             if (filter.isEnabled) tab else null
         }.toTypedArray()
 
+    private val durationBetweenAutomaticRefreshes = Duration.ofDays(1)
+
     override suspend fun submitFeedItemChange(feedItem: SubscriptionsFeedItem) {
         DatabaseHolder.Database.feedDao().update(feedItem)
     }
 
     override suspend fun getFeed(
-        forceRefresh: Boolean,
+        refresh: FeedRefresh,
         onProgressUpdate: (FeedProgress) -> Unit
     ): List<StreamItem> {
         val nowMillis = Instant.now().toEpochMilli()
@@ -68,19 +71,23 @@ class LocalFeedRepository(
         }
         val lastRefreshMillis = PreferenceHelper.getLong(refreshTimestampKey, 0)
 
-        if (!forceRefresh) {
+        if (refresh is FeedRefresh.Automatically) {
             val feed = getCachedFeed(channelIdSet)
             val durationSinceLastRefresh = nowMillis - lastRefreshMillis
 
             // only refresh if feed is empty or last refresh was more than a day ago
-            if (feed.isNotEmpty() && durationSinceLastRefresh < Duration.ofDays(1).toMillis()) {
+            if (feed.isNotEmpty() && durationSinceLastRefresh < durationBetweenAutomaticRefreshes.toMillis()) {
                 return feed.map(SubscriptionsFeedItem::toStreamItem)
             }
         }
 
+        val channelIdsToRefresh = when (refresh) {
+            is FeedRefresh.OnlySome -> refresh.channelIds.filter { it in channelIdSet }
+            else -> channelIds
+        }
         DatabaseHolder.Database.feedDao().cleanUpOlderThan(minimumDateMillis)
-        refreshFeed(channelIds, minimumDateMillis, onProgressUpdate)
-        if (syncServerType == UserDataRepositoryHelper.syncServerType) {
+        refreshFeed(channelIdsToRefresh, minimumDateMillis, onProgressUpdate)
+        if (refresh !is FeedRefresh.OnlySome && syncServerType == UserDataRepositoryHelper.syncServerType) {
             PreferenceHelper.putLong(refreshTimestampKey, nowMillis)
         }
 
@@ -105,10 +112,10 @@ class LocalFeedRepository(
         }
 
         for (channelIdChunk in channelIds.chunked(CHANNEL_CHUNK_SIZE)) {
-            val count = channelExtractionCount.get();
+            val count = channelExtractionCount.get()
             if (count >= CHANNEL_BATCH_SIZE) {
                 // add a delay after each BATCH_SIZE amount of fully-fetched channels
-                delay(CHANNEL_BATCH_DELAY.random())
+                delay(CHANNEL_BATCH_DELAY.random().milliseconds)
                 channelExtractionCount.set(0)
             }
 

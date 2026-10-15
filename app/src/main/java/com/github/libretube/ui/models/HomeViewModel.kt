@@ -18,6 +18,7 @@ import com.github.libretube.extensions.runSafely
 import com.github.libretube.extensions.updateIfChanged
 import com.github.libretube.helpers.PlayerHelper
 import com.github.libretube.helpers.PreferenceHelper
+import com.github.libretube.repo.FeedRefresh
 import com.github.libretube.repo.UserDataRepository
 import com.github.libretube.repo.UserDataRepositoryHelper
 import kotlinx.coroutines.Dispatchers
@@ -141,7 +142,7 @@ class HomeViewModel : ViewModel() {
     private suspend fun tryLoadFeed(subscriptionsViewModel: SubscriptionsViewModel): List<StreamItem> {
         // use cached feed if available, otherwise load feed from API/database
         val feed = subscriptionsViewModel.videoFeed.value ?: run {
-            SubscriptionHelper.getFeed(forceRefresh = false).also {
+            SubscriptionHelper.getFeed(FeedRefresh.Automatically).also {
                 subscriptionsViewModel.videoFeed.postValue(it)
             }
         }
