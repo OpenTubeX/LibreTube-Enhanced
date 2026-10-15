@@ -553,17 +553,12 @@
     <string name="load_data_from">Načítať údaje YouTube z</string>
     <string name="load_data_from_local">Priamo z YouTube</string>
     <string name="load_data_from_piped">cez Piped (zastarané)</string>
-    <string name="libretube_sync_server">Synchronizačný server LibreTube</string>
     <string name="data_synchronization">Synchronizácia údajov</string>
-    <string name="sync_server_type">Synchronizovať používateľské údaje (odbery, zoznamy skladieb) cez</string>
-    <string name="sync_server_url">URL synchronizačného servera LibreTube</string>
     <string name="export">Exportovať</string>
     <string name="exporting">Prebieha export…</string>
     <string name="missing_auth_falling_back">Nie ste prihlásení. Synchronizácia údajov je vypnutá.</string>
     <string name="sync_type_summary_none">Ukladať všetky používateľské údaje offline v aplikácii. To znamená, že údaje nemôžete synchronizovať medzi zariadeniami, ale môže to byť správna voľba, ak používate len jedno zariadenie alebo vás synchronizácia medzi zariadeniami nezaujíma.</string>
-    <string name="sync_type_summary_libretube">Ukladajte údaje o zoznamoch skladieb a odberoch na synchronizačnom serveri LibreTube (%1$s). To vám umožní prihlásiť sa do vášho účtu na akomkoľvek inom zariadení a mať prístup k vašim odberom a zoznamom skladieb. Upozornenie týkajúce sa ochrany súkromia: Údaje používateľov sú na strane servera pseudonymizované, nie sú však šifrované end-to-end. Podľa výberu si môžete hosťovať aj vlastnú verziu servera, ale zvyčajne by mal oficiálny server stačiť.</string>
     <string name="sync_type_summary_piped">Len pre expertov, zastarané:\nUkladajte zoznamy skladieb a odbery na Piped (%1$s). Keďže Piped už nemá žiadne verejné inštancie, musíte hosťovať vlastnú Piped inštanciu.</string>
     <string name="switch_sync_type_warning">Ak ste predtým používali iný typ synchronizácie, najprv si prosím urobte zálohu svojich odberov a zoznamov skladieb. Potom môžete prepnúť typ synchronizácie v nastaveniach inštancie a znova importovať svoje údaje zo zálohy.</string>
-    <string name="oidc_login">Pokračovať s OIDC</string>
     <string name="already_downloaded">Toto video ste už stiahli!</string>
 </resources>
