@@ -78,6 +78,10 @@ jobs:
           # fork's base and pushes upstream-sync; merging its PR preserves fork
           # changes and upstream commit history, including on conflicting PRs.
           git reset --hard FETCH_HEAD
+          # Upstream workflows reference actions by tag, which this repository's
+          # Actions policy rejects, so pushes to upstream-sync would always fail.
+          git rm -rq --ignore-unmatch .github/workflows
+          git checkout ORIG_HEAD -- .github/workflows
 
       - name: Create or update upstream pull request
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
@@ -86,6 +90,7 @@ jobs:
           base: master
           branch: upstream-sync
           delete-branch: true
+          commit-message: "ci: keep fork workflows"
           title: "chore: sync master from libre-tube/LibreTube"
           body: |
             Sync [libre-tube/LibreTube:master](https://github.com/libre-tube/LibreTube/tree/master) into `master`.
