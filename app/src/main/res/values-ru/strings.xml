@@ -556,7 +556,7 @@
     <string name="opentubex_sync_server">Сервер синхронизации OpenTubeX</string>
     <string name="data_synchronization">Синхронизация данных</string>
     <string name="sync_server_type">Синхронизировать пользовательские данные (подписки, плейлисты) с помощью</string>
-    <string name="sync_server_url">URL-адрес сервера синхронизации LibreTube</string>
+    <string name="sync_server_url">URL сервера (sync) LibreTube</string>
     <string name="export">Экспорт</string>
     <string name="exporting">Идет экспортирование…</string>
     <string name="missing_auth_falling_back">Вы не вошли в систему. Синхронизация данных отключена.</string>
