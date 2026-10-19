@@ -116,7 +116,7 @@
     <string name="fireIcon">Feu à la mode</string>
     <string name="birdIcon">Oiseau boosté</string>
     <string name="torchIcon">Torche à tendances</string>
-    <string name="instance_summary">Piped, connexion et compte</string>
+    <string name="instance_summary">Synchronisation des données, compte et historique</string>
     <string name="invalid_url">Veuillez saisir une URL qui fonctionne</string>
     <string name="customInstance_summary">Ajouter…</string>
     <string name="instance_name">Nom de l’instance</string>
@@ -179,7 +179,7 @@
     <string name="pure_theme">Thème pur</string>
     <string name="data_saver_mode">Mode économie de données</string>
     <string name="search_history_summary">Mémoriser les recherches</string>
-    <string name="watch_history_summary">Garder la trace des vidéos regardées localement</string>
+    <string name="watch_history_summary">Mémoriser les vidéos regardées</string>
     <string name="history_summary">Historique des vidéos regardées et des recherches</string>
     <string name="watch_positions_title">Mémoriser la position courante des lectures</string>
     <string name="reset_watch_positions">Réinitialiser</string>
@@ -544,4 +544,19 @@
     <string name="comment_pinned">Épinglé</string>
     <string name="courses">Cours</string>
     <string name="defaults">Réglages par défaut</string>
+    <string name="choose_instance">Veuillez d\'abord choisir une instance !</string>
+    <string name="export">Exporter</string>
+    <string name="exporting">Exportation en cours…</string>
+    <string name="account">Compte</string>
+    <string name="missing_auth_falling_back">Vous n\'êtes pas connecté. La synchronisation des données est désactivée.</string>
+    <string name="already_downloaded">Vous avez déjà téléchargé cette vidéo !</string>
+    <string name="welcome">Bienvenue dans LibreTube ! Pour débuter, sélectionnez un mode de synchronisation ci-dessous et indiquez comment synchroniser vos données utilisateur entre appareils.</string>
+    <string name="data_synchronization">Synchronisation des données</string>
+    <string name="choose_instance_long">Veuillez choisir ci-dessous l\'instance Piped que vous souhaitez utiliser. L\'instance Piped servira d\'intermédiaire entre vous et YouTube. Ces instances sont situées à différents emplacements physiques, indiqués par leur(s) drapeau(x) national(aux). Les instances physiquement plus proches de vous sont généralement plus rapides que celles qui le sont moins. Vous pouvez modifier l\'instance que vous utilisez à tout moment dans les paramètres.</string>
+    <string name="load_data_from">Charger les données YouTube depuis</string>
+    <string name="load_data_from_local">En provenance directe de YouTube</string>
+    <string name="load_data_from_piped">via Piped (obsolète)</string>
+    <string name="sync_type_summary_none">Enregistrez toutes les données utilisateur hors ligne dans l\'application. Cela signifie que vous ne pouvez pas synchroniser les données entre vos appareils, mais cela peut être la solution idéale si vous n\'utilisez qu\'un seul appareil ou si la synchronisation entre appareils ne vous intéresse pas.</string>
+    <string name="sync_type_summary_piped">Réservé aux experts, obsolète :\nEnregistrez les données relatives aux playlists et aux abonnements sur Piped (%1$s). Piped ne disposant plus d\'instances publiques, vous devez héberger votre propre instance Piped.</string>
+    <string name="switch_sync_type_warning">Si vous utilisiez auparavant un autre type de synchronisation, veuillez d\'abord effectuer une sauvegarde de vos abonnements et de vos playlists. Vous pourrez ensuite modifier le type de synchronisation dans les paramètres de l\'instance et réimporter vos données à partir de la sauvegarde.</string>
 </resources>
