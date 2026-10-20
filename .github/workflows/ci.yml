@@ -15,82 +15,88 @@ on:
       - "assets/**"
       - ".github/**/*.md"
 
+permissions:
+  contents: read
+
 jobs:
   debug-builds:
     runs-on: ubuntu-latest
+    outputs:
+      nightly_tag: ${{ steps.metadata.outputs.nightly_tag }}
+      nightly_date: ${{ steps.metadata.outputs.nightly_date }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: gradle/actions/wrapper-validation@v5
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.x' # Version range or exact version of a Python version to use, using SemVer's version range syntax
-          architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
+      - name: Set build metadata
+        id: metadata
+        run: |
+          {
+            echo "nightly_tag=nightly-${GITHUB_RUN_NUMBER}"
+            echo "nightly_date=$(date -u +'%Y-%m-%d %H:%M UTC')"
+            echo "version_code=$((1000000 + GITHUB_RUN_NUMBER))"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: gradle/actions/wrapper-validation@0723195856401067f7a2779048b490ace7a47d7c # v5
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           java-version: 17
           distribution: "temurin"
           cache: "gradle"
 
       - name: Compile
-        run: |
-          ./gradlew assembleDebug
+        run: >-
+          ./gradlew assembleDebug --no-daemon
+          -PnightlyVersionCode=${{ steps.metadata.outputs.version_code }}
+          -PnightlyVersionName=${{ steps.metadata.outputs.nightly_tag }}
 
-      - name: Sign Apk
-        continue-on-error: true
-        id: sign_apk
-        uses: ilharp/sign-android-release@v2
+      - name: Upload APK
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          releaseDir: app/build/outputs/apk/debug
+          name: unsigned-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
+
+  nightly-release:
+    if: >-
+      github.repository == 'OpenTubeX/LibreTube-Enhanced' &&
+      github.ref == 'refs/heads/master' &&
+      github.event_name != 'pull_request'
+    needs: debug-builds
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download APK
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: unsigned-debug-apk
+          path: unsigned
+
+      - name: Sign APK
+        id: sign_apk
+        uses: ilharp/sign-android-release@13dd52242698526f951aa8bb8696204f6fea702a # v2
+        with:
+          releaseDir: unsigned
           signingKey: ${{ secrets.ANDROID_SIGNING_KEY }}
           keyAlias: ${{ secrets.ANDROID_KEY_ALIAS }}
           keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v6
+      - name: Rename APK
+        run: mv "${{ steps.sign_apk.outputs.signedFile }}" LibreTube-Enhanced-nightly.apk
+
+      - name: Create nightly release
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
         with:
-          name: app
-          path: app/build/outputs/apk/debug/app-debug-signed.apk
-
-  release-nightly:
-    if: github.ref_name == 'master'
-    permissions:
-      contents: write
-    runs-on: ubuntu-latest
-    needs: debug-builds
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Download Debug APK
-        uses: actions/download-artifact@v5
-        with:
-          name: app
-          path: .
-
-      - name: Get Date and Time
-        run: |
-          echo "TIME=$(date -u +'%T')" >> $GITHUB_ENV
-          echo "DATE=$(date -u +'%d-%m-%Y')" >> $GITHUB_ENV
-
-      - name: Create Nightly Tag
-        run: git tag -f nightly && git push -f origin nightly
-
-      - name: Create Nightly Release
-        if: github.ref == 'refs/heads/master'
-        uses: ncipollo/release-action@v1
-        with:
-          token: ${{ github.token }}
-          tag:  nightly
-          makeLatest: true
+          tag_name: ${{ needs.debug-builds.outputs.nightly_tag }}
+          target_commitish: ${{ github.sha }}
+          name: LibreTube Enhanced ${{ needs.debug-builds.outputs.nightly_tag }}
           prerelease: true
-          allowUpdates: true
-          updateOnlyUnreleased: true
-          artifacts: app-debug-signed.apk
-          name: LibreTube Nightly ${{ env.DATE }}
+          make_latest: false
+          fail_on_unmatched_files: true
+          files: LibreTube-Enhanced-nightly.apk
           body: |
-            LibreTube Nightly build from ${{ env.DATE }} ${{ env.TIME }}
+            Built from `${{ github.sha }}` on ${{ needs.debug-builds.outputs.nightly_date }}.
 
-            > [!NOTE]
-            > Nightly builds include features/fixes before the official release. Therefore, they are generally less stable than normal releases. Use nightly builds at your own risk.
+            Nightly builds may be less stable than normal releases. Install them at your own risk.
