@@ -19,6 +19,9 @@ jobs:
     if: github.repository == 'OpenTubeX/LibreTube-Enhanced'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
     env:
       GH_TOKEN: ${{ secrets.UPSTREAM_SYNC_TOKEN }}
     defaults:
@@ -91,6 +94,7 @@ jobs:
           git checkout ORIG_HEAD -- .github/workflows
 
       - name: Create or update upstream pull request
+        id: pull_request
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           token: ${{ secrets.UPSTREAM_SYNC_TOKEN }}
@@ -103,3 +107,11 @@ jobs:
             Sync [libre-tube/LibreTube:master](https://github.com/libre-tube/LibreTube/tree/master) into `master`.
 
             Merge with a **merge commit** to preserve fork changes and shared upstream history.
+
+      # Assignment by the PAT owner is self-activity and does not notify them.
+      - name: Assign new upstream pull request as the Actions bot
+        if: steps.pull_request.outputs.pull-request-operation == 'created'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.pull_request.outputs.pull-request-number }}
+        run: gh pr edit "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --add-assignee D3SOX
