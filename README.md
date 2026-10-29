@@ -1,9 +1,11 @@
+> [!WARNING]
+> This fork is no longer maintained. I've fully switched to [OpenTubeX](https://opentubex.org), which now runs on desktop and mobile. OpenTubeX doesn't have native clients yet, but they are planned. It already works well for my daily use, so please give it a try. If you run into problems, [open an issue](https://github.com/OpenTubeX/OpenTubeX/issues) and I'll take a look.
+>
+> If you'd like to continue this project, feel free to fork it.
+
 # About this fork
 
-> [!NOTE]
-> I'm currently focused on porting [OpenTubeX](https://github.com/OpenTubeX/OpenTubeX) to mobile. This fork is kept up to date with upstream LibreTube, but it isn't receiving new features for now.
-
-This is a fork of LibreTube in its early stages. Installable builds are published as [GitHub nightly releases](https://github.com/OpenTubeX/LibreTube-Enhanced/releases). Use [Add to Obtainium][obtainium-link] to import the repository with prereleases enabled.
+This was a fork of LibreTube. Installable builds are published as [GitHub nightly releases](https://github.com/OpenTubeX/LibreTube-Enhanced/releases). Use [Add to Obtainium][obtainium-link] to import the repository with prereleases enabled.
 
 Nightly builds use the `com.github.libretube.enhanced.debug` package, so they can be installed alongside regular LibreTube and official LibreTube nightlies.
 
